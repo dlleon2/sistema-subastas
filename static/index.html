@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SubastaHub — Plataforma de Subastas en Vivo</title>
+    <meta name="description" content="Plataforma interactiva para subastas en vivo de tecnología, coleccionables y artículos exclusivos con ofertas en tiempo real.">
+    
+    <!-- Google Fonts: Plus Jakarta Sans & Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <!-- Top Navigation -->
+    <header class="app-header" id="app-header">
+        <div class="header-container">
+            <div class="brand">
+                <div class="brand-icon">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="m14 13-7.5 7.5a2.12 2.12 0 1 1-3-3L11 10"/>
+                        <path d="m16 16 6-6"/>
+                        <path d="m8 8 6-6"/>
+                        <path d="m9 7 8 8"/>
+                        <path d="m21 11-8-8"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="brand-title">Subasta<span>Hub</span></h1>
+                    <p class="brand-tagline">Sistema Inteligente de Subastas en Vivo</p>
+                </div>
+            </div>
+
+            <div class="header-actions">
+                <div class="live-pill" id="live-indicator">
+                    <span class="live-pulse"></span>
+                    <span class="live-text">En Vivo</span>
+                </div>
+
+                <a href="/docs" target="_blank" class="btn btn-outline" id="btn-api-docs" title="Ver Documentación Swagger API">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                        <polyline points="10 9 9 9 8 9"/>
+                    </svg>
+                    Swagger API
+                </a>
+
+                <button class="btn btn-primary" id="btn-open-create-modal">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                    Publicar Subasta
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <!-- Live Metrics Section -->
+        <section class="metrics-grid" id="metrics-section">
+            <div class="metric-card">
+                <div class="metric-icon icon-cyan">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                        <line x1="12" y1="22.08" x2="12" y2="12"/>
+                    </svg>
+                </div>
+                <div class="metric-info">
+                    <span class="metric-label">Subastas Totales</span>
+                    <h2 class="metric-value" id="stat-total-subastas">0</h2>
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon icon-emerald">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                    </svg>
+                </div>
+                <div class="metric-info">
+                    <span class="metric-label">Subastas Activas</span>
+                    <h2 class="metric-value text-emerald" id="stat-activas">0</h2>
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon icon-indigo">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                    </svg>
+                </div>
+                <div class="metric-info">
+                    <span class="metric-label">Ofertas Realizadas</span>
+                    <h2 class="metric-value" id="stat-total-ofertas">0</h2>
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-icon icon-amber">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="1" x2="12" y2="23"/>
+                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                    </svg>
+                </div>
+                <div class="metric-info">
+                    <span class="metric-label">Volumen Acumulado</span>
+                    <h2 class="metric-value text-amber" id="stat-volumen">$0.00</h2>
+                </div>
+            </div>
+        </section>
+
+        <!-- Filters & Search Toolbar -->
+        <section class="toolbar-section" id="toolbar-section">
+            <div class="search-box">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input type="text" id="input-search" placeholder="Buscar por producto, marca o descripción..." autocomplete="off">
+            </div>
+
+            <div class="filter-group">
+                <span class="filter-label">Estado:</span>
+                <button class="filter-btn active" data-filter="todas" id="filter-todas">Todas</button>
+                <button class="filter-btn" data-filter="activas" id="filter-activas">Activas</button>
+                <button class="filter-btn" data-filter="cerradas" id="filter-cerradas">Cerradas</button>
+            </div>
+        </section>
+
+        <!-- Auctions Grid -->
+        <section class="auctions-container">
+            <div class="section-header">
+                <h3 class="section-title">Lotes y Productos en Subasta</h3>
+                <span class="section-counter" id="counter-subastas">Cargando subastas...</span>
+            </div>
+
+            <div class="auctions-grid" id="auctions-grid">
+                <!-- Auction cards will be rendered dynamically -->
+            </div>
+
+            <!-- Empty State -->
+            <div class="empty-state hidden" id="empty-state">
+                <div class="empty-icon">
+                    <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <circle cx="11" cy="11" r="8"/>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                </div>
+                <h3>No se encontraron subastas</h3>
+                <p>Prueba con otros términos de búsqueda o publica un nuevo lote para subastar.</p>
+                <button class="btn btn-primary" id="btn-empty-create">Crear Nueva Subasta</button>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal: Ofertar / Pujar -->
+    <div class="modal-backdrop hidden" id="modal-bid">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div>
+                    <span class="modal-pretitle">Participar en Subasta</span>
+                    <h3 class="modal-title" id="bid-modal-product-name">Laptop Gaming</h3>
+                </div>
+                <button class="btn-close" id="btn-close-bid-modal">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="bid-product-summary">
+                    <img id="bid-modal-product-img" src="/static/img/laptop.jpg" alt="Producto" class="bid-product-thumb">
+                    <div class="bid-product-details">
+                        <span class="badge badge-active" id="bid-modal-status-badge">Activa</span>
+                        <div class="price-row">
+                            <span class="price-label">Precio Actual:</span>
+                            <span class="price-current" id="bid-modal-current-price">$0.00</span>
+                        </div>
+                        <div class="bidder-row">
+                            <span class="bidder-label">Mayor Postor:</span>
+                            <span class="bidder-name" id="bid-modal-highest-bidder">Sin ofertas</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bid-requirement-box">
+                    <span>Oferta mínima requerida:</span>
+                    <strong id="bid-modal-min-amount">$0.00</strong>
+                </div>
+
+                <!-- Quick Increment Buttons -->
+                <div class="quick-increments">
+                    <span class="quick-label">Pujas rápidas:</span>
+                    <div class="increment-buttons">
+                        <button type="button" class="btn-increment" data-increment="10">+$10</button>
+                        <button type="button" class="btn-increment" data-increment="25">+$25</button>
+                        <button type="button" class="btn-increment" data-increment="50">+$50</button>
+                        <button type="button" class="btn-increment" data-increment="100">+$100</button>
+                    </div>
+                </div>
+
+                <form id="form-bid" class="bid-form">
+                    <div class="form-group">
+                        <label for="bid-user-name">Tu Nombre / Pseudónimo *</label>
+                        <input type="text" id="bid-user-name" placeholder="Ej. Carlos Ramos" required autocomplete="name">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="bid-amount">Monto de la Oferta (USD) *</label>
+                        <div class="input-currency">
+                            <span class="currency-symbol">$</span>
+                            <input type="number" id="bid-amount" step="0.5" min="0" placeholder="0.00" required>
+                        </div>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-outline" id="btn-cancel-bid">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="btn-submit-bid">
+                            <span>Confirmar Oferta</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Historial de Ofertas -->
+    <div class="modal-backdrop hidden" id="modal-history">
+        <div class="modal-card modal-large">
+            <div class="modal-header">
+                <div>
+                    <span class="modal-pretitle">Registro de Transacciones</span>
+                    <h3 class="modal-title" id="history-modal-product-name">Historial de Ofertas</h3>
+                </div>
+                <button class="btn-close" id="btn-close-history-modal">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="history-stats">
+                    <div class="h-stat">
+                        <span class="h-stat-label">Precio Inicial</span>
+                        <span class="h-stat-value" id="history-initial-price">$0.00</span>
+                    </div>
+                    <div class="h-stat">
+                        <span class="h-stat-label">Precio Actual / Final</span>
+                        <span class="h-stat-value text-emerald" id="history-current-price">$0.00</span>
+                    </div>
+                    <div class="h-stat">
+                        <span class="h-stat-label">Total de Pujas</span>
+                        <span class="h-stat-value" id="history-total-bids">0</span>
+                    </div>
+                    <div class="h-stat">
+                        <span class="h-stat-label">Ganador / Líder</span>
+                        <span class="h-stat-value text-amber" id="history-leader">N/A</span>
+                    </div>
+                </div>
+
+                <div class="history-table-container">
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Participante</th>
+                                <th>Monto</th>
+                                <th>Fecha y Hora</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Publicar Nueva Subasta -->
+    <div class="modal-backdrop hidden" id="modal-create">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div>
+                    <span class="modal-pretitle">Administración</span>
+                    <h3 class="modal-title">Publicar Nueva Subasta</h3>
+                </div>
+                <button class="btn-close" id="btn-close-create-modal">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <form id="form-create-auction" class="bid-form">
+                    <div class="form-group">
+                        <label for="create-name">Nombre del Producto o Artículo *</label>
+                        <input type="text" id="create-name" placeholder="Ej. Tarjeta Gráfica RTX 4080 Super" required>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="create-category">Categoría *</label>
+                            <select id="create-category" required>
+                                <option value="Tecnología">Tecnología</option>
+                                <option value="Coleccionables">Coleccionables</option>
+                                <option value="Audio">Audio y Música</option>
+                                <option value="Fotografía">Fotografía</option>
+                                <option value="Otros">Otros</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="create-starting-price">Precio Inicial (USD) *</label>
+                            <div class="input-currency">
+                                <span class="currency-symbol">$</span>
+                                <input type="number" id="create-starting-price" min="1" step="0.5" placeholder="100.00" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="create-duration">Duración Estimada (Minutos)</label>
+                        <input type="number" id="create-duration" min="5" value="60">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Imagen del Producto</label>
+                        <div class="image-presets">
+                            <label class="preset-option">
+                                <input type="radio" name="image-choice" value="/static/img/laptop.jpg" checked>
+                                <img src="/static/img/laptop.jpg" alt="Laptop Preset">
+                                <span>Laptop</span>
+                            </label>
+                            <label class="preset-option">
+                                <input type="radio" name="image-choice" value="/static/img/reloj.jpg">
+                                <img src="/static/img/reloj.jpg" alt="Reloj Preset">
+                                <span>Reloj</span>
+                            </label>
+                            <label class="preset-option">
+                                <input type="radio" name="image-choice" value="/static/img/auriculares.jpg">
+                                <img src="/static/img/auriculares.jpg" alt="Auriculares Preset">
+                                <span>Auriculares</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="create-description">Descripción Detallada *</label>
+                        <textarea id="create-description" rows="3" placeholder="Estado del artículo, características técnicas, garantía, etc." required></textarea>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-outline" id="btn-cancel-create">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="btn-submit-create">
+                            <span>Publicar Subasta</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
