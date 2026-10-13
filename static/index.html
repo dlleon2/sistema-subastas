@@ -65,28 +65,47 @@
         <!-- Live Metrics Section -->
         <section class="metrics-grid" id="metrics-section">
             <div class="metric-card">
-                <div class="metric-icon icon-cyan">📦</div>
+                <div class="metric-icon icon-cyan">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                        <line x1="12" y1="22.08" x2="12" y2="12"/>
+                    </svg>
+                </div>
                 <div class="metric-info">
                     <span class="metric-label">Subastas Totales</span>
                     <h2 class="metric-value" id="stat-total-subastas">0</h2>
                 </div>
             </div>
             <div class="metric-card">
-                <div class="metric-icon icon-emerald">🔥</div>
+                <div class="metric-icon icon-emerald">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                    </svg>
+                </div>
                 <div class="metric-info">
                     <span class="metric-label">Subastas Activas</span>
                     <h2 class="metric-value text-emerald" id="stat-activas">0</h2>
                 </div>
             </div>
             <div class="metric-card">
-                <div class="metric-icon icon-indigo">⚡</div>
+                <div class="metric-icon icon-indigo">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                    </svg>
+                </div>
                 <div class="metric-info">
                     <span class="metric-label">Ofertas Realizadas</span>
                     <h2 class="metric-value" id="stat-total-ofertas">0</h2>
                 </div>
             </div>
             <div class="metric-card">
-                <div class="metric-icon icon-amber">💰</div>
+                <div class="metric-icon icon-amber">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="1" x2="12" y2="23"/>
+                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                    </svg>
+                </div>
                 <div class="metric-info">
                     <span class="metric-label">Volumen Acumulado</span>
                     <h2 class="metric-value text-amber" id="stat-volumen">$0.00</h2>
@@ -107,8 +126,8 @@
             <div class="filter-group">
                 <span class="filter-label">Estado:</span>
                 <button class="filter-btn active" data-filter="todas" id="filter-todas">Todas</button>
-                <button class="filter-btn" data-filter="activas" id="filter-activas">🔥 Activas</button>
-                <button class="filter-btn" data-filter="cerradas" id="filter-cerradas">🔒 Cerradas</button>
+                <button class="filter-btn" data-filter="activas" id="filter-activas">Activas</button>
+                <button class="filter-btn" data-filter="cerradas" id="filter-cerradas">Cerradas</button>
             </div>
         </section>
 
@@ -125,7 +144,12 @@
 
             <!-- Empty State -->
             <div class="empty-state hidden" id="empty-state">
-                <div class="empty-icon">🔍</div>
+                <div class="empty-icon">
+                    <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <circle cx="11" cy="11" r="8"/>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                </div>
                 <h3>No se encontraron subastas</h3>
                 <p>Prueba con otros términos de búsqueda o publica un nuevo lote para subastar.</p>
                 <button class="btn btn-primary" id="btn-empty-create">Crear Nueva Subasta</button>
@@ -161,7 +185,7 @@
                 </div>
 
                 <div class="bid-requirement-box">
-                    <span>💡 Tu oferta debe superar:</span>
+                    <span>Oferta mínima requerida:</span>
                     <strong id="bid-modal-min-amount">$0.00</strong>
                 </div>
 
@@ -193,7 +217,7 @@
                     <div class="modal-actions">
                         <button type="button" class="btn btn-outline" id="btn-cancel-bid">Cancelar</button>
                         <button type="submit" class="btn btn-primary" id="btn-submit-bid">
-                            <span>🚀 Confirmar Oferta</span>
+                            <span>Confirmar Oferta</span>
                         </button>
                     </div>
                 </form>

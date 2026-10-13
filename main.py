@@ -55,11 +55,11 @@ def run_cli():
 def run_server():
     """Ejecuta el servidor Backend FastAPI y sirve la interfaz Web moderna."""
     print("=" * 60)
-    print("🚀 INICIANDO SISTEMA DE SUBASTAS (FULLSTACK)")
+    print("INICIANDO SISTEMA DE SUBASTAS (FULLSTACK)")
     print("=" * 60)
-    print("🌐 Aplicación Web disponible en: http://127.0.0.1:8000")
-    print("📖 Documentación interactiva API: http://127.0.0.1:8000/docs")
-    print("💡 Presiona CTRL + C para detener el servidor.")
+    print("Aplicación Web disponible en: http://127.0.0.1:8000")
+    print("Documentación interactiva API: http://127.0.0.1:8000/docs")
+    print("Presiona CTRL + C para detener el servidor.")
     print("=" * 60)
 
     uvicorn.run("app:app", host="127.0.0.1", port=8000, reload=True)

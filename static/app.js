@@ -132,12 +132,12 @@ function renderAuctions() {
 function createAuctionCardHtml(item) {
     const isActiva = item.abierta;
     const badgeStatus = isActiva
-        ? `<span class="badge badge-active">🔥 En Vivo</span>`
-        : `<span class="badge badge-closed">🔒 Finalizada</span>`;
+        ? `<span class="badge badge-active">En Vivo</span>`
+        : `<span class="badge badge-closed">Finalizada</span>`;
 
-    const leaderText = item.mayor_postor ? `👑 ${item.mayor_postor}` : 'Sin postores aún';
+    const leaderText = item.mayor_postor ? `Líder: ${item.mayor_postor}` : 'Sin postores aún';
     const finalPriceLabel = isActiva ? 'Precio Actual' : 'Adjudicado Por';
-    const winnerLabel = !isActiva && item.ganador_nombre ? `🏆 Ganador: ${item.ganador_nombre}` : leaderText;
+    const winnerLabel = !isActiva && item.ganador_nombre ? `Ganador: ${item.ganador_nombre}` : leaderText;
 
     return `
         <article class="auction-card" data-id="${item.id}">
@@ -166,23 +166,30 @@ function createAuctionCardHtml(item) {
 
                 <div class="card-bidder-info">
                     <span class="bidder-chip" title="Postor al frente">${winnerLabel}</span>
-                    <span class="bids-count">💬 ${item.total_ofertas} pujas</span>
+                    <span class="bids-count">${item.total_ofertas} pujas</span>
                 </div>
 
                 <div class="card-actions">
                     ${isActiva ? `
                         <button class="btn btn-primary btn-bid-action" data-id="${item.id}">
-                            ⚡ Pujar Ahora
+                            Pujar Ahora
                         </button>
                         <button class="btn btn-outline btn-icon btn-history-action" data-id="${item.id}" title="Ver Historial">
-                            📋
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                            </svg>
                         </button>
                         <button class="btn btn-danger btn-icon btn-close-action" data-id="${item.id}" title="Cerrar Subasta">
-                            ⏹
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="4" y="4" width="16" height="16" rx="2" ry="2"/>
+                            </svg>
                         </button>
                     ` : `
                         <button class="btn btn-outline btn-history-action" data-id="${item.id}" style="width: 100%;">
-                            📋 Ver Resultado e Historial
+                            Ver Resultado e Historial
                         </button>
                     `}
                 </div>
@@ -306,7 +313,7 @@ async function openHistoryModal(auctionId) {
         historyTotalBids.textContent = subasta.total_ofertas;
         historyLeader.textContent = subasta.abierta
             ? (subasta.mayor_postor || 'Sin postores')
-            : (subasta.ganador_nombre ? `🏆 ${subasta.ganador_nombre}` : 'Sin adjudicar');
+            : (subasta.ganador_nombre ? `Ganador: ${subasta.ganador_nombre}` : 'Sin adjudicar');
 
         if (!subasta.historial_ofertas || subasta.historial_ofertas.length === 0) {
             historyTableBody.innerHTML = `
@@ -320,8 +327,8 @@ async function openHistoryModal(auctionId) {
             historyTableBody.innerHTML = subasta.historial_ofertas.map((of, idx) => {
                 const isFirst = idx === 0;
                 const statusTag = isFirst 
-                    ? (subasta.abierta ? '🟢 Puja Líder' : '🏆 Ganadora')
-                    : '⚪ Superada';
+                    ? (subasta.abierta ? 'Puja Líder' : 'Adjudicada')
+                    : 'Superada';
 
                 return `
                     <tr class="${isFirst ? 'highest-bid' : ''}">
@@ -484,8 +491,10 @@ function setupEventListeners() {
 function showToast(message, type = 'success') {
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
-    const icon = type === 'success' ? '✅' : '⚠️';
-    toast.innerHTML = `<span>${icon}</span> <span>${escapeHtml(message)}</span>`;
+    const icon = type === 'success'
+        ? '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>'
+        : '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+    toast.innerHTML = `<span class="toast-icon">${icon}</span> <span>${escapeHtml(message)}</span>`;
 
     toastContainer.appendChild(toast);
 

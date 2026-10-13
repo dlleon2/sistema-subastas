@@ -70,7 +70,7 @@ def realizar_oferta(subasta_id: int, req: OfertarRequest):
             monto=req.monto
         )
         return {
-            "mensaje": f"¡Oferta de ${req.monto:.2f} registrada exitosamente por {req.usuario}!",
+            "mensaje": f"Oferta de ${req.monto:.2f} registrada exitosamente por {req.usuario}.",
             "subasta": subasta_actualizada
         }
     except ValueError as ve:
@@ -109,7 +109,7 @@ def nueva_subasta(req: CrearSubastaRequest):
             imagen_url=req.imagen_url
         )
         return {
-            "mensaje": "¡Subasta creada con éxito!",
+            "mensaje": "Subasta creada con éxito.",
             "subasta": subasta
         }
     except ValueError as ve:
