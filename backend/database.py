@@ -2,7 +2,8 @@ import sqlite3
 import os
 from datetime import datetime
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "subastas.db")
+# Archivo de base de datos en la raíz del proyecto
+DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "subastas.db")
 
 
 def get_connection():
@@ -318,10 +319,31 @@ def crear_subasta(nombre: str, descripcion: str, categoria: str, precio_inicial:
     cursor.execute("""
     INSERT INTO subastas (producto_id, abierta, duracion_minutos)
     VALUES (?, 1, ?);
-    """, (prod_id, duracion_minutos))
+    """, (prod_id,))
     subasta_id = cursor.lastrowid
 
     conn.commit()
     conn.close()
 
     return obtener_subasta_por_id(subasta_id)
+
+
+def metricas_globales():
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) as total_subastas FROM subastas;")
+    total_subastas = cursor.fetchone()["total_subastas"]
+
+    cursor.execute("SELECT COUNT(*) as activas FROM subastas WHERE abierta = 1;")
+    activas = cursor.fetchone()["activas"]
+
+    cursor.execute("SELECT COUNT(*) as total_ofertas, COALESCE(SUM(monto), 0) as volumen FROM ofertas;")
+    ofertas_row = cursor.fetchone()
+    conn.close()
+
+    return {
+        "total_subastas": total_subastas,
+        "subastas_activas": activas,
+        "total_ofertas": ofertas_row["total_ofertas"],
+        "volumen_total": round(ofertas_row["volumen"], 2)
+    }

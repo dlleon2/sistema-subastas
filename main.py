@@ -1,16 +1,14 @@
 import sys
 import uvicorn
-from modelos.producto import Producto
-from modelos.subasta import Subasta
-from modelos.usuario import Usuario
+from backend.models import Producto, Subasta, Usuario
 
 
 def run_cli():
     """Ejecuta el modo clásico interactivo por consola."""
     producto = Producto(
-        "Laptop",
-        "Laptop usada en buen estado",
-        300
+        nombre="Laptop",
+        descripcion="Laptop usada en buen estado",
+        precio_inicial=300
     )
     subasta = Subasta(producto)
 
@@ -32,7 +30,7 @@ def run_cli():
                 monto = float(input("Monto de la oferta: $"))
 
                 subasta.registrar_oferta(usuario, monto)
-                print("¡Oferta registrada!")
+                print("Oferta registrada exitosamente.")
 
             except ValueError as error:
                 print(f"Error: {error}")
@@ -62,7 +60,7 @@ def run_server():
     print("Presiona CTRL + C para detener el servidor.")
     print("=" * 60)
 
-    uvicorn.run("app:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("backend.app:app", host="127.0.0.1", port=8000, reload=True)
 
 
 if __name__ == "__main__":
