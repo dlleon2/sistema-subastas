@@ -39,8 +39,10 @@ if os.path.exists(frontend_dir):
 
 
 @app.get("/")
+@app.get("/admin/dashboard")
 def servir_frontend():
     index_file = os.path.join(frontend_dir, "index.html")
     if os.path.exists(index_file):
         return FileResponse(index_file)
     return {"mensaje": "Backend API activo. Visita /docs para la documentación interactiva."}
+
