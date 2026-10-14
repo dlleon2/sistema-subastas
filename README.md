@@ -14,9 +14,10 @@ sistema-subastas/
 ├── backend/                       # Capa del servidor y lógica del negocio
 │   ├── __init__.py
 │   ├── app.py                     # Configuración de FastAPI, middlewares y rutas
+│   ├── auth.py                    # Hashing PBKDF2, tokens HMAC-SHA256 y RBAC (guardias)
 │   ├── database.py                # Conexión MongoDB (NoSQL), colecciones y persistencia
 │   ├── models.py                  # Clases de dominio (POO) y esquemas DTO (Pydantic)
-│   └── routes.py                  # Endpoints de la API REST (/api/subastas, /api/metricas)
+│   └── routes.py                  # Endpoints de la API REST (/api/auth, /api/subastas, /api/admin)
 │
 ├── frontend/                      # Capa del cliente (interfaz de usuario)
 │   ├── index.html                 # Estructura semántica de la aplicación web
@@ -24,6 +25,8 @@ sistema-subastas/
 │   ├── app.js                     # Cliente JavaScript con actualización en tiempo real
 │   └── img/                       # Recursos e imágenes de los productos
 │
+├── seed.py                        # Seed MongoDB en Python (recomendado)
+├── seed.js                        # Seed alternativo para mongosh
 ├── main.py                        # Punto de entrada unificado para ejecutar la aplicación
 ├── requirements.txt               # Dependencias del proyecto
 └── README.md                      # Documentación del proyecto
@@ -34,6 +37,8 @@ sistema-subastas/
 ## Características Principales
 
 * **Control de Acceso Basado en Roles (RBAC):** Sistema integral de 4 roles (`ROLE_ADMIN`, `ROLE_SELLER`, `ROLE_BUYER`, `ROLE_GUEST`) con middlewares de autorización y jerarquía de permisos.
+* **Aislamiento de Propiedad (Ownership):** Un usuario regular solo puede editar, cerrar o cancelar sus propias subastas (`auction.userId === currentUser.id`); intentar modificar una ajena retorna **403 Forbidden**.
+* **Búsqueda Avanzada:** Filtro por **etiquetas (tags)** y búsqueda por palabra clave en título, descripción y etiquetas.
 * **Backend Asíncrono:** Construido con FastAPI, tokens JWT / HMAC-SHA256 y documentación OpenAPI automática (/docs).
 * **Persistencia NoSQL:** Base de datos MongoDB (colecciones `roles`, `usuarios`, `subastas`, `configuracion` y `counters`), con script SQL de respaldo en `backend/migrations/001_roles_y_permisos.sql`.
 * **Pujas Inteligentes:** Validación de incremento mínimo garantizado (`precio_actual + incremento_minimo`).
@@ -66,10 +71,31 @@ sistema-subastas/
 
 | Rol | Correo Electrónico | Contraseña | Capacidades Clave |
 | :--- | :--- | :--- | :--- |
-| **ROLE_ADMIN** | `admin@subastahub.com` | `admin123` | Control total, moderación y parámetros |
-| **ROLE_SELLER** | `vendedor@subastahub.com` | `vendedor123` | Publicar subastas, panel vendedor |
-| **ROLE_BUYER** | `comprador@subastahub.com` | `comprador123` | Pujar con incremento, favoritos |
+| **ROLE_ADMIN** | `admin@subastas.com` | `admin123` | Control total, `/admin/dashboard`, moderación (Aprobar/Suspender/Eliminar) |
+| **ROLE_SELLER** | `carlos@subastas.com` | `carlos123` | Publicar subastas con etiquetas/fechas y panel de gestión |
+| **ROLE_BUYER** | `ana@subastas.com` | `ana123` | Pujar con incremento mínimo, favoritos y publicar sus propias subastas |
+| **ROLE_BUYER** | `mateo@subastas.com` | `mateo123` | Pujar con incremento mínimo, favoritos y publicar sus propias subastas |
 | **ROLE_GUEST** | *(No autenticado)* | *(Sin clave)* | Solo lectura y autenticación |
+
+---
+
+## Datos Simulados (Seed)
+
+La base de datos MongoDB se puebla automáticamente al iniciar la aplicación si está vacía
+(1 administrador, 3 usuarios y 8 subastas con etiquetas y fechas variadas).
+
+Para forzar una regeneración limpia de los datos de prueba:
+
+```bash
+python seed.py        # Script Python (recomendado, hashes de contraseña reales)
+```
+
+Alternativamente, con `mongosh`:
+
+```bash
+mongosh "mongodb://localhost:27017/sistema_subastas" seed.js
+```
+
 
 ---
 
