@@ -33,13 +33,43 @@ sistema-subastas/
 
 ## Características Principales
 
-* **Backend Asíncrono:** Construido con FastAPI, con validación de esquemas y documentación OpenAPI automática.
-* **Persistencia NoSQL:** Base de datos MongoDB (colecciones `subastas` y `counters`), manteniendo el histórico completo de lotes, postores y ofertas con actualización atómica.
-* **Frontend:** Interfaz web moderna sin dependencias externas pesadas.
-* **Múltiples Lotes:** Soporte para crear y subastar productos en diversas categorías con imágenes y descripciones.
-* **Pujas Interactivas:** Validaciones para ofertas mayores al precio actual, pujas rápidas e historial de postores.
-* **Cierre y Adjudicación:** Declaración formal del ganador al culminar una subasta.
-* **Modo Consola:** Mantiene compatibilidad con el modo CLI clásico con perfiles separados ejecutando `python main.py --cli`.
+* **Control de Acceso Basado en Roles (RBAC):** Sistema integral de 4 roles (`ROLE_ADMIN`, `ROLE_SELLER`, `ROLE_BUYER`, `ROLE_GUEST`) con middlewares de autorización y jerarquía de permisos.
+* **Backend Asíncrono:** Construido con FastAPI, tokens JWT / HMAC-SHA256 y documentación OpenAPI automática (/docs).
+* **Persistencia NoSQL:** Base de datos MongoDB (colecciones `roles`, `usuarios`, `subastas`, `configuracion` y `counters`), con script SQL de respaldo en `backend/migrations/001_roles_y_permisos.sql`.
+* **Pujas Inteligentes:** Validación de incremento mínimo garantizado (`precio_actual + incremento_minimo`).
+* **Panel de Vendedor:** Dashboard para gestionar lotes, con permiso de edición y cancelación solo si el lote no tiene pujas activas.
+* **Panel de Administración:** Control total sobre `/api/admin/*`, moderación de subastas, suspensión de usuarios y parámetros globales del sistema.
+* **Frontend Interactivo:** Simulador de roles 1-Click integrado para probar de forma inmediata los 4 perfiles sin necesidad de logins manuales.
+
+---
+
+## Matriz de Roles y Permisos (RBAC)
+
+| Funcionalidad | Visitante (`ROLE_GUEST`) | Comprador (`ROLE_BUYER`) | Vendedor (`ROLE_SELLER`) | Administrador (`ROLE_ADMIN`) |
+| :--- | :---: | :---: | :---: | :---: |
+| Ver Catálogo y Detalle de Subasta | ✅ | ✅ | ✅ | ✅ |
+| Iniciar Sesión / Registrarse | ✅ | ✅ | ✅ | ✅ |
+| Realizar Pujas Manuales (con inc. mín.) | ❌ | ✅ | ✅ | ✅ |
+| Guardar / Quitar Favoritos | ❌ | ✅ | ✅ | ✅ |
+| Ver Historial Personal de Pujas | ❌ | ✅ | ✅ | ✅ |
+| Publicar Nuevas Subastas | ❌ | ❌ | ✅ | ✅ |
+| Dashboard de Mis Subastas | ❌ | ❌ | ✅ | ✅ |
+| Editar Subasta (Solo sin pujas) | ❌ | ❌ | ✅ | ✅ |
+| Cancelar Subasta (Antes de 1er incremento) | ❌ | ❌ | ✅ | ✅ |
+| Moderar Subastas (Aprobar, Rechazar, Cerrar) | ❌ | ❌ | ❌ | ✅ |
+| Suspender / Reactivar Usuarios | ❌ | ❌ | ❌ | ✅ |
+| Definir Parámetros Globales (comisión, inc.) | ❌ | ❌ | ❌ | ✅ |
+
+---
+
+## Cuentas de Prueba Preconfiguradas (1-Click en el Simulador)
+
+| Rol | Correo Electrónico | Contraseña | Capacidades Clave |
+| :--- | :--- | :--- | :--- |
+| **ROLE_ADMIN** | `admin@subastahub.com` | `admin123` | Control total, moderación y parámetros |
+| **ROLE_SELLER** | `vendedor@subastahub.com` | `vendedor123` | Publicar subastas, panel vendedor |
+| **ROLE_BUYER** | `comprador@subastahub.com` | `comprador123` | Pujar con incremento, favoritos |
+| **ROLE_GUEST** | *(No autenticado)* | *(Sin clave)* | Solo lectura y autenticación |
 
 ---
 
