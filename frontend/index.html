@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SubastaHub — Plataforma de Subastas</title>
-    <meta name="description" content="Plataforma interactiva para subastas de tecnología, coleccionables y artículos exclusivos con ofertas en tiempo real.">
+    <title>SubastaHub — Plataforma de Subastas con Control RBAC</title>
+    <meta name="description" content="Plataforma de subastas con control de acceso basado en roles (RBAC): Administrador, Vendedor, Comprador y Visitante.">
     
     <!-- Google Fonts: Plus Jakarta Sans & Outfit -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,6 +14,31 @@
     <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
+    <!-- Barra Superior: Selector Rápido de Roles (Simulador RBAC) -->
+    <aside class="quick-demo-bar" id="quick-demo-bar">
+        <div class="quick-demo-title">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            <strong>Simulador RBAC (1-Click Switch):</strong>
+        </div>
+        <div class="demo-chips">
+            <button type="button" class="demo-chip demo-chip-guest active" id="chip-guest" data-role="ROLE_GUEST" title="Visitante no autenticado">
+                👀 Visitante (ROLE_GUEST)
+            </button>
+            <button type="button" class="demo-chip demo-chip-buyer" id="chip-buyer" data-role="ROLE_BUYER" title="Comprador: Pujas manuales y Favoritos">
+                🛒 Ana (ROLE_BUYER)
+            </button>
+            <button type="button" class="demo-chip demo-chip-seller" id="chip-seller" data-role="ROLE_SELLER" title="Vendedor: Publicar y Panel">
+                💼 Carlos (ROLE_SELLER)
+            </button>
+            <button type="button" class="demo-chip demo-chip-admin" id="chip-admin" data-role="ROLE_ADMIN" title="Administrador: Control total /admin/*">
+                ⚡ Admin (ROLE_ADMIN)
+            </button>
+        </div>
+    </aside>
+
     <!-- Top Navigation -->
     <header class="app-header" id="app-header">
         <div class="header-container">
@@ -29,7 +54,7 @@
                 </div>
                 <div>
                     <h1 class="brand-title">Subasta<span>Hub</span></h1>
-                    <p class="brand-tagline">Sistema Inteligente de Subastas</p>
+                    <p class="brand-tagline">Sistema con Control de Acceso Basado en Roles (RBAC)</p>
                 </div>
             </div>
 
@@ -38,26 +63,54 @@
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                         <polyline points="14 2 14 8 20 8"/>
-                        <line x1="16" y1="13" x2="8" y2="13"/>
-                        <line x1="16" y1="17" x2="8" y2="17"/>
-                        <polyline points="10 9 9 9 8 9"/>
                     </svg>
                     Swagger API
                 </a>
 
-                <button class="btn btn-primary" id="btn-open-create-modal">
+                <!-- Botón Publicar (Disponible para Vendedores y Admin) -->
+                <button class="btn btn-primary hidden" id="btn-open-create-modal">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
                         <line x1="12" y1="5" x2="12" y2="19"/>
                         <line x1="5" y1="12" x2="19" y2="12"/>
                     </svg>
                     Publicar Subasta
                 </button>
+
+                <!-- Estado del Usuario / Autenticación -->
+                <div class="user-session-widget" id="user-session-widget">
+                    <span class="role-badge role-guest" id="user-role-badge">ROLE_GUEST</span>
+                    <button class="btn btn-outline" id="btn-auth-action">Iniciar Sesión</button>
+                </div>
             </div>
         </div>
     </header>
 
+    <!-- Barra de Pestañas de Vistas según Rol -->
+    <nav class="nav-tabs-wrapper" id="nav-tabs-wrapper">
+        <button class="nav-tab-btn active" data-tab="catalogo" id="tab-catalogo">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            Catálogo General
+        </button>
+        <button class="nav-tab-btn hidden" data-tab="favoritos" id="tab-favoritos">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+            Mis Favoritos
+        </button>
+        <button class="nav-tab-btn hidden" data-tab="mis-pujas" id="tab-mis-pujas">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Mis Pujas
+        </button>
+        <button class="nav-tab-btn hidden" data-tab="panel-vendedor" id="tab-panel-vendedor">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+            Panel Vendedor
+        </button>
+        <button class="nav-tab-btn hidden" data-tab="panel-admin" id="tab-panel-admin">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Panel Administrador
+        </button>
+    </nav>
+
     <main class="main-content">
-        <!-- Live Metrics Section -->
+        <!-- Métricas Section -->
         <section class="metrics-grid" id="metrics-section">
             <div class="metric-card">
                 <div class="metric-icon icon-cyan">
@@ -90,8 +143,8 @@
                     </svg>
                 </div>
                 <div class="metric-info">
-                    <span class="metric-label">Ofertas Realizadas</span>
-                    <h2 class="metric-value" id="stat-total-ofertas">0</h2>
+                    <span class="metric-label">Total Ofertas</span>
+                    <h2 class="metric-value" id="stat-ofertas">0</h2>
                 </div>
             </div>
             <div class="metric-card">
@@ -108,85 +161,169 @@
             </div>
         </section>
 
-        <!-- Filters & Search Toolbar -->
-        <section class="toolbar-section" id="toolbar-section">
+        <!-- Filtros y Controles -->
+        <section class="controls-bar" id="controls-bar">
             <div class="search-box">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="11" cy="11" r="8"/>
                     <line x1="21" y1="21" x2="16.65" y2="16.65"/>
                 </svg>
-                <input type="text" id="input-search" placeholder="Buscar por producto, marca o descripción..." autocomplete="off">
+                <input type="text" id="search-input" placeholder="Buscar por producto, lote o categoría..." autocomplete="off">
             </div>
 
             <div class="filter-group">
-                <span class="filter-label">Estado:</span>
-                <button class="filter-btn active" data-filter="todas" id="filter-todas">Todas</button>
-                <button class="filter-btn" data-filter="activas" id="filter-activas">Activas</button>
-                <button class="filter-btn" data-filter="cerradas" id="filter-cerradas">Cerradas</button>
+                <button class="filter-btn active" data-filter="todas">Todas</button>
+                <button class="filter-btn" data-filter="activas">Activas</button>
+                <button class="filter-btn" data-filter="cerradas">Cerradas</button>
             </div>
         </section>
 
-        <!-- Auctions Grid -->
-        <section class="auctions-container">
-            <div class="section-header">
-                <h3 class="section-title">Lotes y Productos en Subasta</h3>
-                <span class="section-counter" id="counter-subastas">Cargando subastas...</span>
+        <!-- Banner de Contexto de Rol Activo -->
+        <div id="role-context-banner" class="banner-info" style="margin-bottom: 1.5rem; padding: 0.85rem 1.25rem; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 12px; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center;">
+            <div id="role-context-text">
+                <strong>Rol actual: Visitante (ROLE_GUEST)</strong> — Puedes ver el catálogo y el detalle. Inicia sesión como Comprador para pujar y marcar favoritos.
             </div>
+        </div>
 
-            <div class="auctions-grid" id="auctions-grid">
-                <!-- Auction cards will be rendered dynamically -->
-            </div>
-
-            <!-- Empty State -->
-            <div class="empty-state hidden" id="empty-state">
-                <div class="empty-icon">
-                    <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <circle cx="11" cy="11" r="8"/>
-                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                    </svg>
-                </div>
-                <h3>No se encontraron subastas</h3>
-                <p>Prueba con otros términos de búsqueda o publica un nuevo lote para subastar.</p>
-                <button class="btn btn-primary" id="btn-empty-create">Crear Nueva Subasta</button>
-            </div>
+        <!-- Contenedor Principal de Subastas -->
+        <section class="auctions-grid" id="auctions-grid">
+            <!-- Las tarjetas se generan dinámicamente -->
         </section>
+
+        <!-- Vista Alternativa: Mis Favoritos / Mis Pujas / Panel Vendedor / Panel Admin -->
+        <section id="custom-view-container" class="hidden" style="margin-top: 1rem;">
+            <!-- Contenido dinámico según pestaña activa -->
+        </section>
+
+        <!-- Empty State -->
+        <div class="empty-state hidden" id="empty-state">
+            <div class="empty-icon">
+                <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="8" y1="12" x2="16" y2="12"/>
+                </svg>
+            </div>
+            <h3>No se encontraron subastas</h3>
+            <p>Intenta con otros términos de búsqueda o cambia los filtros de estado.</p>
+        </div>
     </main>
 
-    <!-- Modal: Ofertar / Pujar -->
+    <!-- Footer -->
+    <footer class="app-footer">
+        <div class="footer-container">
+            <p>&copy; 2026 SubastaHub. Sistema de Subastas Fullstack con RBAC.</p>
+            <div class="footer-links">
+                <a href="/docs" target="_blank">Swagger API</a>
+                <span class="dot-separator">&bull;</span>
+                <a href="#quick-demo-bar">Roles & Permisos</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- =====================================================================
+         MODALES
+         ===================================================================== -->
+
+    <!-- Modal: Autenticación (Login / Registro / Cuentas Demo) -->
+    <div class="modal-backdrop hidden" id="modal-auth">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div>
+                    <span class="modal-pretitle">Autenticación RBAC</span>
+                    <h3 class="modal-title" id="auth-modal-title">Iniciar Sesión</h3>
+                </div>
+                <button class="btn-close" id="btn-close-auth-modal">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <div class="auth-tabs">
+                    <button class="auth-tab active" id="tab-login-btn">Iniciar Sesión</button>
+                    <button class="auth-tab" id="tab-register-btn">Crear Cuenta</button>
+                </div>
+
+                <!-- Form Login -->
+                <form id="form-login" class="bid-form">
+                    <div class="form-group">
+                        <label for="login-email">Correo Electrónico *</label>
+                        <input type="email" id="login-email" placeholder="admin@subastahub.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Contraseña *</label>
+                        <input type="password" id="login-password" placeholder="••••••••" required>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">Ingresar</button>
+                    </div>
+                </form>
+
+                <!-- Form Register -->
+                <form id="form-register" class="bid-form hidden">
+                    <div class="form-group">
+                        <label for="reg-name">Nombre Completo *</label>
+                        <input type="text" id="reg-name" placeholder="Ej. Roberto Sánchez" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-email">Correo Electrónico *</label>
+                        <input type="email" id="reg-email" placeholder="roberto@ejemplo.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-password">Contraseña *</label>
+                        <input type="password" id="reg-password" placeholder="••••••••" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reg-role">Rol Deseado *</label>
+                        <select id="reg-role">
+                            <option value="ROLE_BUYER">Comprador (Pujar y favoritos)</option>
+                            <option value="ROLE_SELLER">Vendedor (Publicar lotes y panel)</option>
+                        </select>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">Crear Cuenta</button>
+                    </div>
+                </form>
+
+                <!-- Cuentas Demo de Prueba Rápida -->
+                <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-subtle);">
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">O ingresa con 1-click con una cuenta demo:</p>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-outline" style="font-size: 0.78rem; padding: 0.35rem 0.65rem;" onclick="quickLoginDemo('admin@subastahub.com', 'admin123')">🔑 Admin</button>
+                        <button type="button" class="btn btn-outline" style="font-size: 0.78rem; padding: 0.35rem 0.65rem;" onclick="quickLoginDemo('vendedor@subastahub.com', 'vendedor123')">💼 Vendedor</button>
+                        <button type="button" class="btn btn-outline" style="font-size: 0.78rem; padding: 0.35rem 0.65rem;" onclick="quickLoginDemo('comprador@subastahub.com', 'comprador123')">🛒 Comprador</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Realizar Puja Manual -->
     <div class="modal-backdrop hidden" id="modal-bid">
         <div class="modal-card">
             <div class="modal-header">
                 <div>
-                    <span class="modal-pretitle">Participar en Subasta</span>
-                    <h3 class="modal-title" id="bid-modal-product-name">Laptop Gaming</h3>
+                    <span class="modal-pretitle">Oferta en Tiempo Real</span>
+                    <h3 class="modal-title" id="modal-product-name">Registrar Puja</h3>
                 </div>
                 <button class="btn-close" id="btn-close-bid-modal">&times;</button>
             </div>
 
             <div class="modal-body">
-                <div class="bid-product-summary">
-                    <img id="bid-modal-product-img" src="/static/img/laptop.jpg" alt="Producto" class="bid-product-thumb">
-                    <div class="bid-product-details">
-                        <span class="badge badge-active" id="bid-modal-status-badge">Activa</span>
-                        <div class="price-row">
-                            <span class="price-label">Precio Actual:</span>
-                            <span class="price-current" id="bid-modal-current-price">$0.00</span>
-                        </div>
-                        <div class="bidder-row">
-                            <span class="bidder-label">Mayor Postor:</span>
-                            <span class="bidder-name" id="bid-modal-highest-bidder">Sin ofertas</span>
-                        </div>
+                <div class="bid-current-info">
+                    <div class="info-row">
+                        <span class="info-label">Precio Actual:</span>
+                        <span class="info-value-big" id="modal-current-price">$0.00</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Incremento Mínimo:</span>
+                        <span class="info-value text-cyan" id="modal-min-increment">+$10.00</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Puja Mínima Requerida:</span>
+                        <span class="info-value text-emerald" id="modal-min-required">$0.00</span>
                     </div>
                 </div>
 
-                <div class="bid-requirement-box">
-                    <span>Oferta mínima requerida:</span>
-                    <strong id="bid-modal-min-amount">$0.00</strong>
-                </div>
-
-                <!-- Quick Increment Buttons -->
-                <div class="quick-increments">
-                    <span class="quick-label">Pujas rápidas:</span>
+                <div class="quick-increment-section">
+                    <span class="quick-inc-label">Pujas Rápidas sugeridas:</span>
                     <div class="increment-buttons">
                         <button type="button" class="btn-increment" data-increment="10">+$10</button>
                         <button type="button" class="btn-increment" data-increment="25">+$25</button>
@@ -197,12 +334,12 @@
 
                 <form id="form-bid" class="bid-form">
                     <div class="form-group">
-                        <label for="bid-user-name">Tu Nombre / Pseudónimo *</label>
-                        <input type="text" id="bid-user-name" placeholder="Ej. Carlos Ramos" required autocomplete="name">
+                        <label for="bid-user-name">Participante</label>
+                        <input type="text" id="bid-user-name" readonly style="background: rgba(255,255,255,0.05); color: var(--text-muted);">
                     </div>
 
                     <div class="form-group">
-                        <label for="bid-amount">Monto de la Oferta (USD) *</label>
+                        <label for="bid-amount">Monto de tu Oferta (USD) *</label>
                         <div class="input-currency">
                             <span class="currency-symbol">$</span>
                             <input type="number" id="bid-amount" step="0.5" min="0" placeholder="0.00" required>
@@ -212,7 +349,7 @@
                     <div class="modal-actions">
                         <button type="button" class="btn btn-outline" id="btn-cancel-bid">Cancelar</button>
                         <button type="submit" class="btn btn-primary" id="btn-submit-bid">
-                            <span>Confirmar Oferta</span>
+                            <span>Confirmar Puja</span>
                         </button>
                     </div>
                 </form>
@@ -276,7 +413,7 @@
         <div class="modal-card">
             <div class="modal-header">
                 <div>
-                    <span class="modal-pretitle">Administración</span>
+                    <span class="modal-pretitle">Vendedor</span>
                     <h3 class="modal-title">Publicar Nueva Subasta</h3>
                 </div>
                 <button class="btn-close" id="btn-close-create-modal">&times;</button>
@@ -310,9 +447,15 @@
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label for="create-duration">Duración Estimada (Minutos)</label>
-                        <input type="number" id="create-duration" min="5" value="60">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="create-duration">Duración (Minutos)</label>
+                            <input type="number" id="create-duration" min="5" value="60">
+                        </div>
+                        <div class="form-group">
+                            <label for="create-increment">Incremento Mínimo ($)</label>
+                            <input type="number" id="create-increment" min="1" value="10">
+                        </div>
                     </div>
 
                     <div class="form-group">
@@ -346,6 +489,53 @@
                         <button type="submit" class="btn btn-primary" id="btn-submit-create">
                             <span>Publicar Subasta</span>
                         </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Editar Subasta (Permitido solo si 0 pujas) -->
+    <div class="modal-backdrop hidden" id="modal-edit">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div>
+                    <span class="modal-pretitle">Modificación de Lote</span>
+                    <h3 class="modal-title">Editar Subasta (Sin Pujas)</h3>
+                </div>
+                <button class="btn-close" id="btn-close-edit-modal">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <form id="form-edit-auction" class="bid-form">
+                    <input type="hidden" id="edit-subasta-id">
+                    <div class="form-group">
+                        <label for="edit-name">Nombre del Producto *</label>
+                        <input type="text" id="edit-name" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="edit-category">Categoría *</label>
+                            <select id="edit-category" required>
+                                <option value="Tecnología">Tecnología</option>
+                                <option value="Coleccionables">Coleccionables</option>
+                                <option value="Audio">Audio y Música</option>
+                                <option value="Fotografía">Fotografía</option>
+                                <option value="Otros">Otros</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-price">Precio Inicial ($) *</label>
+                            <input type="number" id="edit-price" min="1" step="0.5" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-description">Descripción *</label>
+                        <textarea id="edit-description" rows="3" required></textarea>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-outline" id="btn-cancel-edit">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar Cambios</button>
                     </div>
                 </form>
             </div>

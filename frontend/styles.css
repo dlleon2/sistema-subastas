@@ -1028,6 +1028,7 @@ textarea:focus {
     }
     .header-actions {
         justify-content: space-between;
+        flex-wrap: wrap;
     }
     .form-row {
         grid-template-columns: 1fr;
@@ -1036,3 +1037,221 @@ textarea:focus {
         grid-template-columns: 1fr;
     }
 }
+
+/* ==========================================================================
+   RBAC & AUTH STYLES
+   ========================================================================== */
+.quick-demo-bar {
+    background: rgba(15, 23, 42, 0.95);
+    border-bottom: 1px solid var(--border-subtle);
+    padding: 0.5rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.quick-demo-title {
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.demo-chips {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.demo-chip {
+    padding: 0.25rem 0.75rem;
+    border-radius: var(--radius-full);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: var(--transition);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+}
+
+.demo-chip:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.demo-chip.active {
+    box-shadow: 0 0 10px rgba(99, 102, 241, 0.4);
+}
+
+.demo-chip-admin.active { background: rgba(244, 63, 94, 0.2); border-color: var(--rose); color: #fda4af; }
+.demo-chip-seller.active { background: rgba(245, 158, 11, 0.2); border-color: var(--amber); color: #fcd34d; }
+.demo-chip-buyer.active { background: rgba(16, 185, 129, 0.2); border-color: var(--emerald); color: #6ee7b7; }
+.demo-chip-guest.active { background: rgba(100, 116, 139, 0.2); border-color: var(--text-muted); color: var(--text-primary); }
+
+.user-session-widget {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.role-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.65rem;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.role-badge.role-admin {
+    background: rgba(244, 63, 94, 0.18);
+    color: #fb7185;
+    border: 1px solid rgba(244, 63, 94, 0.4);
+}
+
+.role-badge.role-seller {
+    background: rgba(245, 158, 11, 0.18);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.role-badge.role-buyer {
+    background: rgba(16, 185, 129, 0.18);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.role-badge.role-guest {
+    background: rgba(100, 116, 139, 0.18);
+    color: #94a3b8;
+    border: 1px solid rgba(100, 116, 139, 0.4);
+}
+
+/* Nav tabs bar */
+.nav-tabs-wrapper {
+    max-width: 1280px;
+    margin: 1.5rem auto 0;
+    padding: 0 1.5rem;
+    display: flex;
+    gap: 0.75rem;
+    border-bottom: 1px solid var(--border-subtle);
+    overflow-x: auto;
+}
+
+.nav-tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    font-weight: 600;
+    padding: 0.75rem 1.25rem;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+}
+
+.nav-tab-btn:hover {
+    color: var(--text-primary);
+}
+
+.nav-tab-btn.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+}
+
+/* Card Favorite button */
+.btn-fav {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-full);
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--transition);
+    z-index: 10;
+}
+
+.btn-fav:hover {
+    color: #f43f5e;
+    transform: scale(1.1);
+}
+
+.btn-fav.active {
+    color: #f43f5e;
+    background: rgba(244, 63, 94, 0.2);
+    border-color: #f43f5e;
+}
+
+/* Auth modal tabs */
+.auth-tabs {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.auth-tab {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+}
+
+.auth-tab.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+}
+
+/* Admin Table & Badges */
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+}
+
+.admin-table th, .admin-table td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+.admin-table th {
+    color: var(--text-muted);
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.badge-status {
+    padding: 0.2rem 0.5rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.badge-activo { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+.badge-suspendido { background: rgba(244, 63, 94, 0.2); color: #fb7185; }
+
