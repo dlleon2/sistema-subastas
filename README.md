@@ -14,7 +14,7 @@ sistema-subastas/
 ├── backend/                       # Capa del servidor y lógica del negocio
 │   ├── __init__.py
 │   ├── app.py                     # Configuración de FastAPI, middlewares y rutas
-│   ├── database.py                # Conexión SQLite, esquemas y persistencia
+│   ├── database.py                # Conexión MongoDB (NoSQL), colecciones y persistencia
 │   ├── models.py                  # Clases de dominio (POO) y esquemas DTO (Pydantic)
 │   └── routes.py                  # Endpoints de la API REST (/api/subastas, /api/metricas)
 │
@@ -34,18 +34,19 @@ sistema-subastas/
 ## Características Principales
 
 * **Backend Asíncrono:** Construido con FastAPI, con validación de esquemas y documentación OpenAPI automática.
-* **Persistencia Relacional:** Base de datos SQLite integrada, manteniendo el histórico de lotes, participantes y ofertas.
-* **Frontend:** Interfaz web sin dependencias externas pesadas, con actualización automática de estado.
+* **Persistencia NoSQL:** Base de datos MongoDB (colecciones `subastas` y `counters`), manteniendo el histórico completo de lotes, postores y ofertas con actualización atómica.
+* **Frontend:** Interfaz web moderna sin dependencias externas pesadas.
 * **Múltiples Lotes:** Soporte para crear y subastar productos en diversas categorías con imágenes y descripciones.
 * **Pujas Interactivas:** Validaciones para ofertas mayores al precio actual, pujas rápidas e historial de postores.
 * **Cierre y Adjudicación:** Declaración formal del ganador al culminar una subasta.
-* **Modo Consola:** Mantiene compatibilidad con el modo CLI clásico ejecutando `python main.py --cli`.
+* **Modo Consola:** Mantiene compatibilidad con el modo CLI clásico con perfiles separados ejecutando `python main.py --cli`.
 
 ---
 
 ## Requisitos Previos
 
 * **Python 3.10 o superior**
+* **MongoDB Server** (corriendo localmente en `localhost:27017` o configurado vía `MONGO_URI`)
 * Gestor de paquetes **pip**
 
 ---

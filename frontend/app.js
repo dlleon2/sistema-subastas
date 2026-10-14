@@ -132,7 +132,7 @@ function renderAuctions() {
 function createAuctionCardHtml(item) {
     const isActiva = item.abierta;
     const badgeStatus = isActiva
-        ? `<span class="badge badge-active">En Vivo</span>`
+        ? `<span class="badge badge-active">Activa</span>`
         : `<span class="badge badge-closed">Finalizada</span>`;
 
     const leaderText = item.mayor_postor ? `Líder: ${item.mayor_postor}` : 'Sin postores aún';

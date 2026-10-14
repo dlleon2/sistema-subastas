@@ -6,15 +6,41 @@ from typing import Optional, List
 # CLASES DE DOMINIO (POO)
 # ============================================================================
 class Usuario:
-    """Representa a un participante o usuario en el sistema."""
-    def __init__(self, nombre: str):
+    """Representa a un participante o usuario base en el sistema."""
+    def __init__(self, nombre: str, rol: str = "Usuario"):
         nombre = nombre.strip()
         if not nombre:
             raise ValueError("El nombre no puede estar vacío.")
         self.nombre = nombre
+        self.rol = rol
 
     def __str__(self):
-        return self.nombre
+        return f"{self.nombre} ({self.rol})"
+
+
+class Subastador(Usuario):
+    """Perfil del usuario que publica, administra y cierra subastas."""
+    def __init__(self, nombre: str):
+        super().__init__(nombre=nombre, rol="Subastador")
+
+    def crear_subasta(self, producto: "Producto", duracion_minutos: int = 60) -> "Subasta":
+        """Inicia una nueva subasta para un producto específico."""
+        return Subasta(producto=producto, duracion_minutos=duracion_minutos, subastador=self)
+
+    def cerrar_subasta(self, subasta: "Subasta"):
+        """Finaliza la subasta y declara al ganador."""
+        subasta.cerrar()
+        return subasta.ganador
+
+
+class Postor(Usuario):
+    """Perfil del usuario que explora subastas y propone precios (ofertas/pujas)."""
+    def __init__(self, nombre: str):
+        super().__init__(nombre=nombre, rol="Postor")
+
+    def proponer_precio(self, subasta: "Subasta", monto: float):
+        """Propone un precio / registra una oferta en la subasta indicada."""
+        return subasta.registrar_oferta(self, monto)
 
 
 class Producto:
@@ -38,9 +64,10 @@ class Producto:
 
 class Subasta:
     """Gestiona el ciclo de vida de una subasta y sus ofertas."""
-    def __init__(self, producto: Producto, duracion_minutos: int = 60):
+    def __init__(self, producto: Producto, duracion_minutos: int = 60, subastador: Optional[Subastador] = None):
         self.producto = producto
         self.duracion_minutos = duracion_minutos
+        self.subastador = subastador
         self.ofertas = []
         self.abierta = True
         self.ganador = None

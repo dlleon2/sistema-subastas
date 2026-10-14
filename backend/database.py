@@ -1,248 +1,229 @@
-import sqlite3
 import os
 from datetime import datetime
+from typing import Optional, List, Dict, Any
+from pymongo import MongoClient, DESCENDING
+from bson import ObjectId
 
-# Archivo de base de datos en la raíz del proyecto
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "subastas.db")
+# Configuración de conexión a MongoDB (Local o variable de entorno para Atlas)
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
+MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "sistema_subastas")
 
-
-def get_connection():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
-def init_db():
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS productos (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        nombre TEXT NOT NULL,
-        descripcion TEXT,
-        categoria TEXT DEFAULT 'Tecnología',
-        precio_inicial REAL NOT NULL,
-        imagen_url TEXT,
-        creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-    """)
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS subastas (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        producto_id INTEGER NOT NULL,
-        abierta INTEGER DEFAULT 1,
-        duracion_minutos INTEGER DEFAULT 60,
-        creada_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        cerrada_en TIMESTAMP,
-        ganador_nombre TEXT,
-        monto_final REAL,
-        FOREIGN KEY (producto_id) REFERENCES productos(id)
-    );
-    """)
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS ofertas (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        subasta_id INTEGER NOT NULL,
-        usuario_nombre TEXT NOT NULL,
-        monto REAL NOT NULL,
-        fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (subasta_id) REFERENCES subastas(id)
-    );
-    """)
-
-    # Seed data if empty
-    cursor.execute("SELECT COUNT(*) AS count FROM subastas;")
-    if cursor.fetchone()["count"] == 0:
-        seed_data(cursor)
-
-    conn.commit()
-    conn.close()
+_client: Optional[MongoClient] = None
 
 
-def seed_data(cursor):
-    productos = [
-        (
-            "Laptop Gaming RTX 4070",
-            "Portátil ultra potente con pantalla QHD de 165Hz, teclado RGB y chasis de aluminio.",
-            "Tecnología",
-            850.00,
-            "/static/img/laptop.jpg"
-        ),
-        (
-            "Reloj Cronógrafo Suizo Speedmaster",
-            "Edición de colección con detalles en oro rosa, cristal de zafiro y correa de cuero genuino.",
-            "Coleccionables",
-            450.00,
-            "/static/img/reloj.jpg"
-        ),
-        (
-            "Auriculares Hi-Fi Wireless ANC",
-            "Auriculares inalámbricos con cancelación de ruido activa adaptativa y sonido de estudio.",
-            "Audio",
-            120.00,
-            "/static/img/auriculares.jpg"
-        ),
-    ]
-
-    for prod in productos:
-        cursor.execute("""
-            INSERT INTO productos (nombre, descripcion, categoria, precio_inicial, imagen_url)
-            VALUES (?, ?, ?, ?, ?);
-        """, prod)
-        prod_id = cursor.lastrowid
-
-        cursor.execute("""
-            INSERT INTO subastas (producto_id, abierta, duracion_minutos)
-            VALUES (?, 1, 120);
-        """, (prod_id,))
-        subasta_id = cursor.lastrowid
-
-        # Insert some initial sample bids
-        if prod[0].startswith("Laptop"):
-            cursor.execute("""
-                INSERT INTO ofertas (subasta_id, usuario_nombre, monto)
-                VALUES (?, ?, ?), (?, ?, ?);
-            """, (subasta_id, "Carlos Ramos", 900.00, subasta_id, "Ana Gómez", 950.00))
-        elif prod[0].startswith("Reloj"):
-            cursor.execute("""
-                INSERT INTO ofertas (subasta_id, usuario_nombre, monto)
-                VALUES (?, ?, ?);
-            """, (subasta_id, "Mateo Silva", 480.00))
+def get_client() -> MongoClient:
+    """Retorna una instancia singleton del cliente MongoClient."""
+    global _client
+    if _client is None:
+        _client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+    return _client
 
 
-def obtener_subastas(filtro_estado=None):
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    query = """
-    SELECT 
-        s.id,
-        s.abierta,
-        s.duracion_minutos,
-        s.creada_en,
-        s.cerrada_en,
-        s.ganador_nombre,
-        s.monto_final,
-        p.id AS producto_id,
-        p.nombre,
-        p.descripcion,
-        p.categoria,
-        p.precio_inicial,
-        p.imagen_url,
-        (SELECT MAX(monto) FROM ofertas WHERE subasta_id = s.id) AS max_oferta,
-        (SELECT usuario_nombre FROM ofertas WHERE subasta_id = s.id ORDER BY monto DESC, id DESC LIMIT 1) AS mayor_postor,
-        (SELECT COUNT(*) FROM ofertas WHERE subasta_id = s.id) AS total_ofertas
-    FROM subastas s
-    JOIN productos p ON s.producto_id = p.id
-    """
-
-    params = []
-    if filtro_estado == "activas":
-        query += " WHERE s.abierta = 1"
-    elif filtro_estado == "cerradas":
-        query += " WHERE s.abierta = 0"
-
-    query += " ORDER BY s.abierta DESC, s.id DESC"
-
-    cursor.execute(query, params)
-    rows = cursor.fetchall()
-    conn.close()
-
-    resultado = []
-    for r in rows:
-        precio_actual = r["max_oferta"] if r["max_oferta"] is not None else r["precio_inicial"]
-        resultado.append({
-            "id": r["id"],
-            "abierta": bool(r["abierta"]),
-            "duracion_minutos": r["duracion_minutos"],
-            "creada_en": r["creada_en"],
-            "cerrada_en": r["cerrada_en"],
-            "ganador_nombre": r["ganador_nombre"],
-            "monto_final": r["monto_final"],
-            "producto": {
-                "id": r["producto_id"],
-                "nombre": r["nombre"],
-                "descripcion": r["descripcion"],
-                "categoria": r["categoria"],
-                "precio_inicial": r["precio_inicial"],
-                "imagen_url": r["imagen_url"] or "/static/img/laptop.jpg"
-            },
-            "precio_actual": precio_actual,
-            "mayor_postor": r["mayor_postor"],
-            "total_ofertas": r["total_ofertas"]
-        })
-    return resultado
+def get_db():
+    """Retorna la base de datos de MongoDB."""
+    client = get_client()
+    return client[MONGO_DB_NAME]
 
 
-def obtener_subasta_por_id(subasta_id: int):
-    conn = get_connection()
-    cursor = conn.cursor()
+def get_next_sequence(name: str) -> int:
+    """Genera secuencias numéricas correlativas (1, 2, 3...) para IDs legibles."""
+    db = get_db()
+    ret = db.counters.find_one_and_update(
+        {"_id": name},
+        {"$inc": {"seq": 1}},
+        upsert=True,
+        return_document=True
+    )
+    return ret["seq"]
 
-    cursor.execute("""
-    SELECT 
-        s.id,
-        s.abierta,
-        s.duracion_minutos,
-        s.creada_en,
-        s.cerrada_en,
-        s.ganador_nombre,
-        s.monto_final,
-        p.id AS producto_id,
-        p.nombre,
-        p.descripcion,
-        p.categoria,
-        p.precio_inicial,
-        p.imagen_url
-    FROM subastas s
-    JOIN productos p ON s.producto_id = p.id
-    WHERE s.id = ?;
-    """, (subasta_id,))
-    row = cursor.fetchone()
 
-    if not row:
-        conn.close()
+def _parse_id_query(subasta_id: Any) -> dict:
+    """Permite buscar subastas tanto por ID numérico (ej. 1, 2) como por ObjectId de MongoDB."""
+    queries = []
+    try:
+        queries.append({"id": int(subasta_id)})
+    except (ValueError, TypeError):
+        pass
+
+    if isinstance(subasta_id, str) and ObjectId.is_valid(subasta_id):
+        queries.append({"_id": ObjectId(subasta_id)})
+    elif isinstance(subasta_id, ObjectId):
+        queries.append({"_id": subasta_id})
+
+    queries.append({"id": str(subasta_id)})
+
+    if len(queries) == 1:
+        return queries[0]
+    return {"$or": queries}
+
+
+def _format_subasta(doc: dict) -> dict:
+    """Estandariza el documento NoSQL al formato JSON esperado por el frontend y la API."""
+    if not doc:
         return None
 
-    cursor.execute("""
-    SELECT id, usuario_nombre, monto, fecha
-    FROM ofertas
-    WHERE subasta_id = ?
-    ORDER BY monto DESC, id DESC;
-    """, (subasta_id,))
-    ofertas = [dict(o) for o in cursor.fetchall()]
+    ofertas = doc.get("ofertas", [])
+    # Ordenar ofertas de mayor a menor monto
+    sorted_ofertas = sorted(
+        ofertas,
+        key=lambda x: (float(x.get("monto", 0.0)), str(x.get("fecha", ""))),
+        reverse=True
+    )
 
-    conn.close()
+    precio_inicial = float(doc.get("producto", {}).get("precio_inicial", 0.0))
+    precio_actual = float(sorted_ofertas[0]["monto"]) if sorted_ofertas else precio_inicial
+    mayor_postor = sorted_ofertas[0]["usuario_nombre"] if sorted_ofertas else None
 
-    precio_actual = ofertas[0]["monto"] if ofertas else row["precio_inicial"]
-    mayor_postor = ofertas[0]["usuario_nombre"] if ofertas else None
+    # Normalizar historial de ofertas
+    historial = []
+    for idx, o in enumerate(sorted_ofertas, 1):
+        historial.append({
+            "id": o.get("id", idx),
+            "usuario_nombre": o.get("usuario_nombre"),
+            "monto": float(o.get("monto", 0.0)),
+            "fecha": o.get("fecha", "")
+        })
 
     return {
-        "id": row["id"],
-        "abierta": bool(row["abierta"]),
-        "duracion_minutos": row["duracion_minutos"],
-        "creada_en": row["creada_en"],
-        "cerrada_en": row["cerrada_en"],
-        "ganador_nombre": row["ganador_nombre"],
-        "monto_final": row["monto_final"],
+        "id": doc.get("id", str(doc.get("_id"))),
+        "mongo_id": str(doc.get("_id")),
+        "abierta": bool(doc.get("abierta", True)),
+        "duracion_minutos": doc.get("duracion_minutos", 60),
+        "creada_en": doc.get("creada_en"),
+        "cerrada_en": doc.get("cerrada_en"),
+        "ganador_nombre": doc.get("ganador_nombre"),
+        "monto_final": float(doc["monto_final"]) if doc.get("monto_final") is not None else None,
         "producto": {
-            "id": row["producto_id"],
-            "nombre": row["nombre"],
-            "descripcion": row["descripcion"],
-            "categoria": row["categoria"],
-            "precio_inicial": row["precio_inicial"],
-            "imagen_url": row["imagen_url"] or "/static/img/laptop.jpg"
+            "id": doc.get("id", 1),
+            "nombre": doc.get("producto", {}).get("nombre", ""),
+            "descripcion": doc.get("producto", {}).get("descripcion", ""),
+            "categoria": doc.get("producto", {}).get("categoria", "Tecnología"),
+            "precio_inicial": precio_inicial,
+            "imagen_url": doc.get("producto", {}).get("imagen_url") or "/static/img/laptop.jpg"
         },
         "precio_actual": precio_actual,
         "mayor_postor": mayor_postor,
         "total_ofertas": len(ofertas),
-        "historial_ofertas": ofertas
+        "historial_ofertas": historial
     }
 
 
-def registrar_oferta(subasta_id: int, usuario_nombre: str, monto: float):
+def init_db():
+    """Inicializa la conexión y crea los índices y datos iniciales en MongoDB."""
+    db = get_db()
+    # Crear índice único para el campo id correlativo
+    db.subastas.create_index("id", unique=True)
+    db.subastas.create_index("abierta")
+
+    # Poblar datos semilla si la colección está vacía
+    if db.subastas.count_documents({}) == 0:
+        seed_data(db)
+
+
+def seed_data(db):
+    """Inserta productos iniciales en MongoDB si la base de datos está vacía."""
+    ahora = datetime.now().isoformat()
+    subastas_iniciales = [
+        {
+            "id": 1,
+            "abierta": True,
+            "duracion_minutos": 120,
+            "creada_en": ahora,
+            "cerrada_en": None,
+            "ganador_nombre": None,
+            "monto_final": None,
+            "producto": {
+                "nombre": "Laptop Gaming RTX 4070",
+                "descripcion": "Portátil ultra potente con pantalla QHD de 165Hz, teclado RGB y chasis de aluminio.",
+                "categoria": "Tecnología",
+                "precio_inicial": 850.00,
+                "imagen_url": "/static/img/laptop.jpg"
+            },
+            "ofertas": [
+                {
+                    "id": 1,
+                    "usuario_nombre": "Carlos Ramos",
+                    "monto": 900.00,
+                    "fecha": ahora
+                },
+                {
+                    "id": 2,
+                    "usuario_nombre": "Ana Gómez",
+                    "monto": 950.00,
+                    "fecha": ahora
+                }
+            ]
+        },
+        {
+            "id": 2,
+            "abierta": True,
+            "duracion_minutos": 120,
+            "creada_en": ahora,
+            "cerrada_en": None,
+            "ganador_nombre": None,
+            "monto_final": None,
+            "producto": {
+                "nombre": "Reloj Cronógrafo Suizo Speedmaster",
+                "descripcion": "Edición de colección con detalles en oro rosa, cristal de zafiro y correa de cuero genuino.",
+                "categoria": "Coleccionables",
+                "precio_inicial": 450.00,
+                "imagen_url": "/static/img/reloj.jpg"
+            },
+            "ofertas": [
+                {
+                    "id": 1,
+                    "usuario_nombre": "Mateo Silva",
+                    "monto": 480.00,
+                    "fecha": ahora
+                }
+            ]
+        },
+        {
+            "id": 3,
+            "abierta": True,
+            "duracion_minutos": 120,
+            "creada_en": ahora,
+            "cerrada_en": None,
+            "ganador_nombre": None,
+            "monto_final": None,
+            "producto": {
+                "nombre": "Auriculares Hi-Fi Wireless ANC",
+                "descripcion": "Auriculares inalámbricos con cancelación de ruido activa adaptativa y sonido de estudio.",
+                "categoria": "Audio",
+                "precio_inicial": 120.00,
+                "imagen_url": "/static/img/auriculares.jpg"
+            },
+            "ofertas": []
+        }
+    ]
+
+    db.subastas.insert_many(subastas_iniciales)
+    db.counters.update_one({"_id": "subasta_id"}, {"$set": {"seq": 3}}, upsert=True)
+
+
+def obtener_subastas(filtro_estado: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Obtiene y retorna la lista de subastas con filtros opcionales."""
+    db = get_db()
+    query = {}
+    if filtro_estado == "activas":
+        query["abierta"] = True
+    elif filtro_estado == "cerradas":
+        query["abierta"] = False
+
+    cursor = db.subastas.find(query).sort([("abierta", DESCENDING), ("id", DESCENDING)])
+    return [_format_subasta(doc) for doc in cursor]
+
+
+def obtener_subasta_por_id(subasta_id: Any) -> Optional[Dict[str, Any]]:
+    """Busca una subasta específica por su identificador."""
+    db = get_db()
+    query = _parse_id_query(subasta_id)
+    doc = db.subastas.find_one(query)
+    return _format_subasta(doc) if doc else None
+
+
+def registrar_oferta(subasta_id: Any, usuario_nombre: str, monto: float) -> Dict[str, Any]:
+    """Registra una nueva oferta en la subasta en MongoDB tras validar las condiciones."""
     usuario_nombre = usuario_nombre.strip()
     if not usuario_nombre:
         raise ValueError("El nombre del usuario no puede estar vacío.")
@@ -259,19 +240,22 @@ def registrar_oferta(subasta_id: int, usuario_nombre: str, monto: float):
             f"La oferta debe ser mayor al precio actual (${subasta['precio_actual']:.2f})."
         )
 
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-    INSERT INTO ofertas (subasta_id, usuario_nombre, monto)
-    VALUES (?, ?, ?);
-    """, (subasta_id, usuario_nombre, monto))
-    conn.commit()
-    conn.close()
+    nueva_oferta = {
+        "id": subasta["total_ofertas"] + 1,
+        "usuario_nombre": usuario_nombre,
+        "monto": float(monto),
+        "fecha": datetime.now().isoformat()
+    }
+
+    db = get_db()
+    query = _parse_id_query(subasta_id)
+    db.subastas.update_one(query, {"$push": {"ofertas": nueva_oferta}})
 
     return obtener_subasta_por_id(subasta_id)
 
 
-def cerrar_subasta(subasta_id: int):
+def cerrar_subasta(subasta_id: Any) -> Dict[str, Any]:
+    """Cierra la subasta, adjudicando el ganador con la mayor oferta registrada."""
     subasta = obtener_subasta_por_id(subasta_id)
     if not subasta:
         raise ValueError("La subasta no existe.")
@@ -281,22 +265,31 @@ def cerrar_subasta(subasta_id: int):
 
     ganador = subasta["mayor_postor"]
     monto_final = subasta["precio_actual"] if ganador else None
-
-    conn = get_connection()
-    cursor = conn.cursor()
     ahora = datetime.now().isoformat()
-    cursor.execute("""
-    UPDATE subastas
-    SET abierta = 0, cerrada_en = ?, ganador_nombre = ?, monto_final = ?
-    WHERE id = ?;
-    """, (ahora, ganador, monto_final, subasta_id))
-    conn.commit()
-    conn.close()
+
+    db = get_db()
+    query = _parse_id_query(subasta_id)
+    db.subastas.update_one(query, {
+        "$set": {
+            "abierta": False,
+            "cerrada_en": ahora,
+            "ganador_nombre": ganador,
+            "monto_final": monto_final
+        }
+    })
 
     return obtener_subasta_por_id(subasta_id)
 
 
-def crear_subasta(nombre: str, descripcion: str, categoria: str, precio_inicial: float, duracion_minutos: int = 60, imagen_url: str = None):
+def crear_subasta(
+    nombre: str,
+    descripcion: str,
+    categoria: str,
+    precio_inicial: float,
+    duracion_minutos: int = 60,
+    imagen_url: str = None
+) -> Dict[str, Any]:
+    """Crea un nuevo documento de subasta en MongoDB con su producto asociado."""
     nombre = nombre.strip()
     if not nombre:
         raise ValueError("El nombre del producto no puede estar vacío.")
@@ -307,43 +300,53 @@ def crear_subasta(nombre: str, descripcion: str, categoria: str, precio_inicial:
     if not imagen_url or not imagen_url.strip():
         imagen_url = "/static/img/laptop.jpg"
 
-    conn = get_connection()
-    cursor = conn.cursor()
+    seq_id = get_next_sequence("subasta_id")
+    ahora = datetime.now().isoformat()
 
-    cursor.execute("""
-    INSERT INTO productos (nombre, descripcion, categoria, precio_inicial, imagen_url)
-    VALUES (?, ?, ?, ?, ?);
-    """, (nombre, descripcion, categoria or "Varios", precio_inicial, imagen_url))
-    prod_id = cursor.lastrowid
+    nuevo_doc = {
+        "id": seq_id,
+        "abierta": True,
+        "duracion_minutos": duracion_minutos,
+        "creada_en": ahora,
+        "cerrada_en": None,
+        "ganador_nombre": None,
+        "monto_final": None,
+        "producto": {
+            "nombre": nombre,
+            "descripcion": descripcion,
+            "categoria": categoria or "Varios",
+            "precio_inicial": float(precio_inicial),
+            "imagen_url": imagen_url
+        },
+        "ofertas": []
+    }
 
-    cursor.execute("""
-    INSERT INTO subastas (producto_id, abierta, duracion_minutos)
-    VALUES (?, 1, ?);
-    """, (prod_id,))
-    subasta_id = cursor.lastrowid
-
-    conn.commit()
-    conn.close()
-
-    return obtener_subasta_por_id(subasta_id)
+    db = get_db()
+    db.subastas.insert_one(nuevo_doc)
+    return obtener_subasta_por_id(seq_id)
 
 
-def metricas_globales():
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) as total_subastas FROM subastas;")
-    total_subastas = cursor.fetchone()["total_subastas"]
+def metricas_globales() -> Dict[str, Any]:
+    """Calcula las métricas de la plataforma mediante agregaciones en MongoDB."""
+    db = get_db()
+    total_subastas = db.subastas.count_documents({})
+    activas = db.subastas.count_documents({"abierta": True})
 
-    cursor.execute("SELECT COUNT(*) as activas FROM subastas WHERE abierta = 1;")
-    activas = cursor.fetchone()["activas"]
-
-    cursor.execute("SELECT COUNT(*) as total_ofertas, COALESCE(SUM(monto), 0) as volumen FROM ofertas;")
-    ofertas_row = cursor.fetchone()
-    conn.close()
+    pipeline = [
+        {"$unwind": "$ofertas"},
+        {"$group": {
+            "_id": None,
+            "total_ofertas": {"$sum": 1},
+            "volumen": {"$sum": "$ofertas.monto"}
+        }}
+    ]
+    agg = list(db.subastas.aggregate(pipeline))
+    total_ofertas = agg[0]["total_ofertas"] if agg else 0
+    volumen = agg[0]["volumen"] if agg else 0.0
 
     return {
         "total_subastas": total_subastas,
         "subastas_activas": activas,
-        "total_ofertas": ofertas_row["total_ofertas"],
-        "volumen_total": round(ofertas_row["volumen"], 2)
+        "total_ofertas": total_ofertas,
+        "volumen_total": round(volumen, 2)
     }

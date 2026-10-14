@@ -15,7 +15,7 @@ def listar_subastas(estado: Optional[str] = Query(None, description="Filtro: act
 
 
 @router.get("/subastas/{subasta_id}")
-def obtener_subasta(subasta_id: int):
+def obtener_subasta(subasta_id: str):
     subasta = database.obtener_subasta_por_id(subasta_id)
     if not subasta:
         raise HTTPException(status_code=404, detail="Subasta no encontrada")
@@ -23,7 +23,7 @@ def obtener_subasta(subasta_id: int):
 
 
 @router.post("/subastas/{subasta_id}/ofertar")
-def realizar_oferta(subasta_id: int, req: OfertarRequest):
+def realizar_oferta(subasta_id: str, req: OfertarRequest):
     try:
         subasta_actualizada = database.registrar_oferta(
             subasta_id=subasta_id,
@@ -41,7 +41,7 @@ def realizar_oferta(subasta_id: int, req: OfertarRequest):
 
 
 @router.post("/subastas/{subasta_id}/cerrar")
-def finalizar_subasta(subasta_id: int):
+def finalizar_subasta(subasta_id: str):
     try:
         subasta_cerrada = database.cerrar_subasta(subasta_id)
         ganador = subasta_cerrada["ganador_nombre"]
