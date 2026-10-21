@@ -1,4 +1,7 @@
-from fastapi import APIRouter, HTTPException, Query, Depends, status
+import uuid
+from pathlib import Path
+
+from fastapi import APIRouter, HTTPException, Query, Depends, status, UploadFile, File
 from typing import Optional, List, Dict, Any
 
 from backend.models import (
@@ -19,6 +22,11 @@ from backend import database
 from backend.auth import get_current_user, require_role, hash_password, verify_password, crear_token
 
 router = APIRouter(prefix="/api", tags=["Subastas & RBAC"])
+
+# Directorio y límites para la carga de imágenes de productos
+UPLOADS_DIR = Path(__file__).resolve().parent.parent / "frontend" / "uploads"
+MAX_IMAGE_BYTES = 5 * 1024 * 1024  # 5 MB
+ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 
 
 # ============================================================================
@@ -86,7 +94,47 @@ def obtener_perfil_actual(user: Dict[str, Any] = Depends(get_current_user)):
 
 
 # ============================================================================
-# 2. CATÁLOGO PÚBLICO: FILTRO POR TAGS, PALABRAS CLAVE Y ESTADOS
+# 2. CARGA DE IMÁGENES DE PRODUCTOS
+# ============================================================================
+@router.post("/uploads/imagen", status_code=status.HTTP_201_CREATED)
+async def subir_imagen_producto(
+    archivo: UploadFile = File(...),
+    current_user: Dict[str, Any] = Depends(require_role(RolUsuario.ROLE_BUYER))
+):
+    """Guarda una imagen del dispositivo y devuelve su URL pública."""
+    if not archivo.filename:
+        raise HTTPException(status_code=400, detail="El archivo no tiene un nombre válido.")
+
+    if archivo.content_type and not archivo.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="El archivo seleccionado no es una imagen.")
+
+    extension = Path(archivo.filename).suffix.lower()
+    if extension not in ALLOWED_IMAGE_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail="Formato no permitido. Usa JPG, PNG, WEBP o GIF."
+        )
+
+    contenido = await archivo.read(MAX_IMAGE_BYTES + 1)
+    if not contenido:
+        raise HTTPException(status_code=400, detail="La imagen está vacía.")
+    if len(contenido) > MAX_IMAGE_BYTES:
+        raise HTTPException(status_code=413, detail="La imagen supera el límite de 5 MB.")
+
+    UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    nombre_archivo = f"{uuid.uuid4().hex}{extension}"
+    destino = UPLOADS_DIR / nombre_archivo
+    destino.write_bytes(contenido)
+
+    return {
+        "mensaje": "Imagen subida correctamente.",
+        "url": f"/static/uploads/{nombre_archivo}",
+        "nombre": nombre_archivo
+    }
+
+
+# ============================================================================
+# 3. CATÁLOGO PÚBLICO: FILTRO POR TAGS, PALABRAS CLAVE Y ESTADOS
 # ============================================================================
 @router.get("/subastas")
 def listar_subastas(
@@ -124,7 +172,7 @@ def metricas_globales():
 
 
 # ============================================================================
-# 3. CREACIÓN Y AISLAMIENTO DE PROPIEDAD (OWNERSHIP)
+# 4. CREACIÓN Y AISLAMIENTO DE PROPIEDAD (OWNERSHIP)
 # ============================================================================
 @router.post("/subastas", status_code=status.HTTP_201_CREATED)
 @router.post("/subastas/nueva", status_code=status.HTTP_201_CREATED)
@@ -246,7 +294,7 @@ def cerrar_subasta(
 
 
 # ============================================================================
-# 4. PUJAS Y SEGUIMIENTO (FAVORITOS Y MI CUENTA)
+# 5. PUJAS Y SEGUIMIENTO (FAVORITOS Y MI CUENTA)
 # ============================================================================
 @router.post("/subastas/{subasta_id}/pujar")
 def realizar_puja(
@@ -337,7 +385,7 @@ def dashboard_vendedor_subastas(current_user: Dict[str, Any] = Depends(require_r
 
 
 # ============================================================================
-# 5. DASHBOARD ADMINISTRATIVO (/admin/dashboard Y ACCIONES)
+# 6. DASHBOARD ADMINISTRATIVO (/admin/dashboard Y ACCIONES)
 # ============================================================================
 @router.get("/admin/dashboard")
 def admin_dashboard_data(current_user: Dict[str, Any] = Depends(require_role(RolUsuario.ROLE_ADMIN))):

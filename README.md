@@ -17,7 +17,7 @@ sistema-subastas/
 │   ├── auth.py                    # Hashing PBKDF2, tokens HMAC-SHA256 y RBAC (guardias)
 │   ├── database.py                # Conexión MongoDB (NoSQL), colecciones y persistencia
 │   ├── models.py                  # Clases de dominio (POO) y esquemas DTO (Pydantic)
-│   └── routes.py                  # Endpoints de la API REST (/api/auth, /api/subastas, /api/admin)
+│   └── routes.py                  # Endpoints REST (/api/auth, /api/subastas, /api/uploads, /api/admin)
 │
 ├── frontend/                      # Capa del cliente (interfaz de usuario)
 │   ├── index.html                 # Estructura semántica de la aplicación web
@@ -41,6 +41,7 @@ sistema-subastas/
 * **Búsqueda Avanzada:** Filtro por **etiquetas (tags)** y búsqueda por palabra clave en título, descripción y etiquetas.
 * **Backend Asíncrono:** Construido con FastAPI, tokens JWT / HMAC-SHA256 y documentación OpenAPI automática (/docs).
 * **Persistencia NoSQL:** Base de datos MongoDB (colecciones `roles`, `usuarios`, `subastas`, `configuracion` y `counters`), con script SQL de respaldo en `backend/migrations/001_roles_y_permisos.sql`.
+* **Carga de imágenes:** Al publicar o editar una subasta se puede subir una foto desde el dispositivo (JPG, PNG, WEBP o GIF, hasta 5 MB), con vista previa antes de guardar.
 * **Pujas Inteligentes:** Validación de incremento mínimo garantizado (`precio_actual + incremento_minimo`).
 * **Panel de Vendedor:** Panel para gestionar lotes, con permiso de edición y cancelación solo si el lote no tiene pujas activas.
 * **Panel de Administración:** Control total sobre `/api/admin/*`, moderación de subastas, suspensión de usuarios y parámetros globales del sistema.
