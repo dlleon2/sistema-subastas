@@ -10,3 +10,6 @@ env/
 *.db
 *.sqlite
 *.sqlite3
+
+# Imágenes subidas por los usuarios
+frontend/uploads/

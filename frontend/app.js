@@ -12,6 +12,8 @@ let currentSearch = '';
 let activeTab = 'catalogo';
 let activeAuctionForBid = null;
 let pollInterval = null;
+let createImageUploader = null;
+let editImageUploader = null;
 
 // Objeto de usuario actual y token (almacenado en localStorage)
 let authState = {
@@ -57,6 +59,130 @@ async function apiFetch(url, options = {}) {
         throw new Error(errorMsg);
     }
     return data;
+}
+
+// ============================================================================
+// CARGA DE IMÁGENES DE PRODUCTOS
+// ============================================================================
+async function subirImagenProducto(file) {
+    const formData = new FormData();
+    formData.append('archivo', file);
+    const res = await apiFetch('/api/uploads/imagen', {
+        method: 'POST',
+        body: formData
+    });
+    return res.url;
+}
+
+function crearGestorImagen({ inputId, zoneId, previewId, previewWrapId, emptyId, removeId }) {
+    const input = document.getElementById(inputId);
+    const zone = document.getElementById(zoneId);
+    const preview = document.getElementById(previewId);
+    const previewWrap = document.getElementById(previewWrapId);
+    const empty = emptyId ? document.getElementById(emptyId) : null;
+    const removeBtn = removeId ? document.getElementById(removeId) : null;
+
+    if (!input || !zone || !preview || !previewWrap) {
+        return { getFile: () => null, setExisting: () => {}, clear: () => {} };
+    }
+
+    let file = null;
+    let objectUrl = null;
+
+    const mostrarPreview = (src) => {
+        preview.src = src;
+        previewWrap.classList.remove('hidden');
+        empty?.classList.add('hidden');
+    };
+
+    const limpiar = () => {
+        if (objectUrl) {
+            URL.revokeObjectURL(objectUrl);
+            objectUrl = null;
+        }
+        file = null;
+        input.value = '';
+        preview.removeAttribute('src');
+        previewWrap.classList.add('hidden');
+        empty?.classList.remove('hidden');
+    };
+
+    const seleccionar = (nuevoArchivo) => {
+        if (!nuevoArchivo) return;
+        if (!nuevoArchivo.type.startsWith('image/')) {
+            input.value = '';
+            showToast('Selecciona un archivo de imagen válido.', 'error');
+            return;
+        }
+        if (nuevoArchivo.size > 5 * 1024 * 1024) {
+            input.value = '';
+            showToast('La imagen no puede superar los 5 MB.', 'error');
+            return;
+        }
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+        file = nuevoArchivo;
+        objectUrl = URL.createObjectURL(nuevoArchivo);
+        mostrarPreview(objectUrl);
+    };
+
+    zone.addEventListener('click', (e) => {
+        if (e.target === input) return;
+        if (e.target.closest('.upload-remove')) return;
+        input.click();
+    });
+
+    zone.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            input.click();
+        }
+    });
+
+    input.addEventListener('change', () => seleccionar(input.files[0]));
+
+    if (removeBtn) {
+        removeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            limpiar();
+        });
+    }
+
+    ['dragenter', 'dragover'].forEach(evento => {
+        zone.addEventListener(evento, (e) => {
+            e.preventDefault();
+            zone.classList.add('is-dragging');
+        });
+    });
+
+    ['dragleave', 'drop'].forEach(evento => {
+        zone.addEventListener(evento, (e) => {
+            e.preventDefault();
+            zone.classList.remove('is-dragging');
+        });
+    });
+
+    zone.addEventListener('drop', (e) => {
+        const archivo = e.dataTransfer?.files?.[0];
+        if (archivo) seleccionar(archivo);
+    });
+
+    return {
+        getFile: () => file,
+        setExisting(url) {
+            if (objectUrl) {
+                URL.revokeObjectURL(objectUrl);
+                objectUrl = null;
+            }
+            file = null;
+            input.value = '';
+            if (url) {
+                mostrarPreview(url);
+            } else {
+                limpiar();
+            }
+        },
+        clear: limpiar
+    };
 }
 
 // ============================================================================
@@ -865,7 +991,9 @@ document.getElementById('form-create-auction').addEventListener('submit', async 
         const precio_inicial = parseFloat(document.getElementById('create-starting-price').value);
         const duracion_minutos = parseInt(document.getElementById('create-duration').value) || 60;
         const incremento_minimo = parseFloat(document.getElementById('create-increment').value) || 10;
-        const imagen_url = document.querySelector('input[name="image-choice"]:checked').value;
+        const imagen_url = createImageUploader?.getFile()
+            ? await subirImagenProducto(createImageUploader.getFile())
+            : undefined;
         const descripcion = document.getElementById('create-description').value;
         const tags = document.getElementById('create-tags').value
             .split(',')
@@ -881,6 +1009,7 @@ document.getElementById('form-create-auction').addEventListener('submit', async 
         showToast(res.mensaje, 'success');
         closeModal('modal-create');
         document.getElementById('form-create-auction').reset();
+        createImageUploader?.clear();
 
         fetchMetrics();
         fetchAuctions();
@@ -903,6 +1032,7 @@ function abrirModalEditar(subastaId) {
     document.getElementById('edit-tags').value = (item.tags || []).join(', ');
     document.getElementById('edit-start-date').value = toDatetimeLocalValue(item.startDate);
     document.getElementById('edit-end-date').value = toDatetimeLocalValue(item.endDate);
+    editImageUploader?.setExisting(item.producto.imagen_url);
 
     openModal('modal-edit');
 }
@@ -924,20 +1054,27 @@ document.getElementById('form-edit-auction').addEventListener('submit', async (e
             .split(',')
             .map(t => t.trim().toLowerCase())
             .filter(t => t.length > 0);
+        const datos = {
+            nombre: document.getElementById('edit-name').value,
+            categoria: document.getElementById('edit-category').value,
+            precio_inicial: parseFloat(document.getElementById('edit-price').value),
+            descripcion: document.getElementById('edit-description').value,
+            tags,
+            startDate: document.getElementById('edit-start-date').value || undefined,
+            endDate: document.getElementById('edit-end-date').value || undefined
+        };
+
+        if (editImageUploader?.getFile()) {
+            datos.imagen_url = await subirImagenProducto(editImageUploader.getFile());
+        }
+
         const res = await apiFetch(`/api/subastas/${id}/editar`, {
             method: 'PUT',
-            body: {
-                nombre: document.getElementById('edit-name').value,
-                categoria: document.getElementById('edit-category').value,
-                precio_inicial: parseFloat(document.getElementById('edit-price').value),
-                descripcion: document.getElementById('edit-description').value,
-                tags,
-                startDate: document.getElementById('edit-start-date').value || undefined,
-                endDate: document.getElementById('edit-end-date').value || undefined
-            }
+            body: datos
         });
         showToast(res.mensaje, 'success');
         closeModal('modal-edit');
+        editImageUploader?.clear();
         fetchAuctions();
         if (activeTab === 'panel-vendedor') loadPanelVendedorView();
     } catch (err) {
@@ -1035,6 +1172,24 @@ function setupEventListeners() {
             if (activeTab !== 'catalogo') switchTab('catalogo');
             else renderAuctionsGrid(auctions);
         });
+    });
+
+    // Carga de imágenes de productos
+    createImageUploader = crearGestorImagen({
+        inputId: 'create-image',
+        zoneId: 'create-image-zone',
+        previewId: 'create-image-preview',
+        previewWrapId: 'create-image-preview-wrap',
+        emptyId: 'create-image-empty',
+        removeId: 'btn-remove-create-image'
+    });
+
+    editImageUploader = crearGestorImagen({
+        inputId: 'edit-image',
+        zoneId: 'edit-image-zone',
+        previewId: 'edit-image-preview',
+        previewWrapId: 'edit-image-preview-wrap',
+        emptyId: 'edit-image-empty'
     });
 
     // Modal Create

@@ -499,24 +499,27 @@
                     </div>
 
                     <div class="form-group">
-                        <label>Imagen del Producto</label>
-                        <div class="image-presets">
-                            <label class="preset-option">
-                                <input type="radio" name="image-choice" value="/static/img/laptop.jpg" checked>
-                                <img src="/static/img/laptop.jpg" alt="Laptop Preset">
-                                <span>Laptop</span>
-                            </label>
-                            <label class="preset-option">
-                                <input type="radio" name="image-choice" value="/static/img/reloj.jpg">
-                                <img src="/static/img/reloj.jpg" alt="Reloj Preset">
-                                <span>Reloj</span>
-                            </label>
-                            <label class="preset-option">
-                                <input type="radio" name="image-choice" value="/static/img/auriculares.jpg">
-                                <img src="/static/img/auriculares.jpg" alt="Auriculares Preset">
-                                <span>Auriculares</span>
-                            </label>
+                        <label for="create-image">Foto del Producto</label>
+                        <div class="upload-zone" id="create-image-zone" role="button" tabindex="0" aria-label="Subir foto del producto">
+                            <input type="file" id="create-image" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
+                            <div class="upload-empty" id="create-image-empty">
+                                <span class="upload-icon">
+                                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/>
+                                        <circle cx="12" cy="13" r="3"/>
+                                    </svg>
+                                </span>
+                                <strong>Sube una foto del artículo</strong>
+                                <span>Haz clic o arrastra la imagen aquí</span>
+                                <small>JPG, PNG, WEBP o GIF · máximo 5 MB</small>
+                            </div>
+                            <div class="upload-preview hidden" id="create-image-preview-wrap">
+                                <img id="create-image-preview" alt="Vista previa de la foto">
+                                <div class="upload-preview-overlay"><span>Cambiar foto</span></div>
+                                <button type="button" class="upload-remove" id="btn-remove-create-image" aria-label="Quitar foto">&times;</button>
+                            </div>
                         </div>
+                        <p class="form-help">Opcional. Si no subes una foto, se usará una imagen de referencia.</p>
                     </div>
 
                     <div class="form-group">
@@ -584,6 +587,28 @@
                             <label for="edit-price">Precio Inicial ($) *</label>
                             <input type="number" id="edit-price" min="1" step="0.5" required>
                         </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-image">Foto del Producto</label>
+                        <div class="upload-zone upload-zone-compact" id="edit-image-zone" role="button" tabindex="0" aria-label="Cambiar foto del producto">
+                            <input type="file" id="edit-image" accept="image/jpeg,image/png,image/webp,image/gif" hidden>
+                            <div class="upload-empty hidden" id="edit-image-empty">
+                                <span class="upload-icon">
+                                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/>
+                                        <circle cx="12" cy="13" r="3"/>
+                                    </svg>
+                                </span>
+                                <strong>Sube una foto del artículo</strong>
+                                <span>Haz clic o arrastra la imagen aquí</span>
+                                <small>JPG, PNG, WEBP o GIF · máximo 5 MB</small>
+                            </div>
+                            <div class="upload-preview hidden" id="edit-image-preview-wrap">
+                                <img id="edit-image-preview" alt="Foto actual del producto">
+                                <div class="upload-preview-overlay"><span>Cambiar foto</span></div>
+                            </div>
+                        </div>
+                        <p class="form-help">Puedes subir una nueva foto para reemplazar la actual.</p>
                     </div>
                     <div class="form-group">
                         <label for="edit-description">Descripción *</label>
