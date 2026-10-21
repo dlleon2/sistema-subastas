@@ -1,10 +1,11 @@
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 from enum import Enum
+from datetime import datetime
 
 
 # ============================================================================
-# DEFINICIÓN DE ROLES DEL SISTEMA (RBAC)
+# ENUMS DEL SISTEMA (ROLES Y ESTADOS DE SUBASTA)
 # ============================================================================
 class RolUsuario(str, Enum):
     ROLE_ADMIN = "ROLE_ADMIN"    # Administrador: control total
@@ -21,205 +22,227 @@ NIVEL_ROLES = {
 }
 
 
+class AuctionStatus(str, Enum):
+    PROGRAMMED = "PROGRAMMED"  # Fecha de inicio a futuro
+    ACTIVE = "ACTIVE"          # En curso actualmente
+    FINISHED = "FINISHED"      # Culminada por fecha límite o adjudicación
+    CANCELLED = "CANCELLED"    # Cancelada por vendedor o admin
+
+
 # ============================================================================
-# CLASES DE DOMINIO (POO CON JERARQUÍA DE ROLES)
+# MODELOS DE DOMINIO (POO: USER, AUCTION, BID)
 # ============================================================================
-class UsuarioBase:
-    """Clase base de dominio para todos los usuarios del sistema."""
-    def __init__(self, nombre: str, email: Optional[str] = None, rol: RolUsuario = RolUsuario.ROLE_GUEST, estado: str = "Activo", id: Optional[int] = None):
-        nombre = nombre.strip()
-        if not nombre:
-            raise ValueError("El nombre no puede estar vacío.")
+class User:
+    """Modelo de Usuario en el dominio."""
+    def __init__(self, name: str, email: str, role: RolUsuario = RolUsuario.ROLE_BUYER, status: str = "Active", id: Optional[Any] = None):
         self.id = id
-        self.nombre = nombre
-        self.email = email
-        self.rol = rol
-        self.estado = estado
+        self.name = name.strip()
+        self.email = email.strip().lower()
+        self.role = role
+        self.status = status
 
     @property
-    def nivel(self) -> int:
-        return NIVEL_ROLES.get(self.rol, 0)
+    def is_active(self) -> bool:
+        return self.status in ["Active", "Activo"]
 
-    def tiene_permiso(self, rol_requerido: RolUsuario) -> bool:
-        return self.nivel >= NIVEL_ROLES.get(rol_requerido, 0)
+    def can_moderate(self) -> bool:
+        return self.role == RolUsuario.ROLE_ADMIN
 
-    def __str__(self):
-        return f"{self.nombre} [{self.rol.value}] ({self.estado})"
-
-
-class Administrador(UsuarioBase):
-    """Rol ROLE_ADMIN: Acceso total, moderación de subastas y control de usuarios."""
-    def __init__(self, nombre: str, email: Optional[str] = None, id: Optional[int] = None):
-        super().__init__(nombre=nombre, email=email, rol=RolUsuario.ROLE_ADMIN, id=id)
-
-    def suspender_usuario(self, usuario: UsuarioBase):
-        usuario.estado = "Suspendido"
-
-    def reactivar_usuario(self, usuario: UsuarioBase):
-        usuario.estado = "Activo"
-
-
-class Vendedor(UsuarioBase):
-    """Rol ROLE_SELLER: Publica lotes, edita (sin pujas) y cancela (antes de ofertas)."""
-    def __init__(self, nombre: str, email: Optional[str] = None, id: Optional[int] = None):
-        super().__init__(nombre=nombre, email=email, rol=RolUsuario.ROLE_SELLER, id=id)
-
-    def crear_subasta(self, producto: "Producto", duracion_minutos: int = 60) -> "Subasta":
-        return Subasta(producto=producto, duracion_minutos=duracion_minutos, subastador=self)
-
-
-class Comprador(UsuarioBase):
-    """Rol ROLE_BUYER: Explora subastas, propone pujas manuales y gestiona favoritos."""
-    def __init__(self, nombre: str, email: Optional[str] = None, id: Optional[int] = None):
-        super().__init__(nombre=nombre, email=email, rol=RolUsuario.ROLE_BUYER, id=id)
-
-    def pujar(self, subasta: "Subasta", monto: float):
-        return subasta.registrar_oferta(self, monto)
-
-
-class Visitante(UsuarioBase):
-    """Rol ROLE_GUEST: Visitante no autenticado (solo lectura de catálogo y detalle)."""
-    def __init__(self):
-        super().__init__(nombre="Visitante", rol=RolUsuario.ROLE_GUEST)
-
-
-# Alias compatibles con implementaciones anteriores y CLI
-Usuario = UsuarioBase
-Subastador = Vendedor
-Postor = Comprador
-
-
-# ============================================================================
-# CLASES DE PRODUCTO Y SUBASTA (POO)
-# ============================================================================
-class Producto:
-    """Representa un artículo que será subastado."""
-    def __init__(self, nombre: str, descripcion: str, precio_inicial: float, categoria: str = "Tecnología", imagen_url: str = None):
-        if not nombre.strip():
-            raise ValueError("El nombre no puede estar vacío.")
-
-        if precio_inicial <= 0:
-            raise ValueError("El precio debe ser mayor que cero.")
-
-        self.nombre = nombre
-        self.descripcion = descripcion
-        self.categoria = categoria
-        self.precio_inicial = float(precio_inicial)
-        self.imagen_url = imagen_url or "/static/img/laptop.jpg"
+    def is_owner_of(self, auction: "Auction") -> bool:
+        return str(auction.seller_id) == str(self.id)
 
     def __str__(self):
-        return f"{self.nombre} - {self.descripcion} (Precio inicial: ${self.precio_inicial:.2f})"
+        return f"{self.name} <{self.email}> [{self.role.value}]"
 
 
-class Subasta:
-    """Gestiona el ciclo de vida de una subasta y sus ofertas."""
-    def __init__(self, producto: Producto, duracion_minutos: int = 60, subastador: Optional[Vendedor] = None, incremento_minimo: float = 10.0):
-        self.producto = producto
-        self.duracion_minutos = duracion_minutos
-        self.subastador = subastador
-        self.incremento_minimo = incremento_minimo
-        self.ofertas = []
-        self.abierta = True
-        self.estado_moderacion = "Aprobada"  # Aprobada, Pendiente, Rechazada, Cancelada
-        self.ganador = None
+class Bid:
+    """Modelo de Puja/Oferta en el dominio."""
+    def __init__(self, bidder_id: Any, bidder_name: str, amount: float, created_at: Optional[str] = None, id: Optional[Any] = None):
+        self.id = id
+        self.bidder_id = bidder_id
+        self.bidder_name = bidder_name
+        self.amount = float(amount)
+        self.created_at = created_at or datetime.now().isoformat()
 
-    def precio_actual(self) -> float:
-        if self.ofertas:
-            return self.ofertas[-1]["monto"]
-        return self.producto.precio_inicial
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "bidderId": self.bidder_id,
+            "usuario_id": self.bidder_id,
+            "bidderName": self.bidder_name,
+            "usuario_nombre": self.bidder_name,
+            "amount": self.amount,
+            "monto": self.amount,
+            "createdAt": self.created_at,
+            "fecha": self.created_at
+        }
 
-    def mayor_postor(self) -> Optional[str]:
-        if self.ofertas:
-            return self.ofertas[-1]["usuario"].nombre if hasattr(self.ofertas[-1]["usuario"], "nombre") else self.ofertas[-1]["usuario"]
+
+class Auction:
+    """Modelo de Subasta con fechas, tags, status y reglas de puja."""
+    def __init__(
+        self,
+        title: str,
+        description: str,
+        starting_price: float,
+        start_date: str,
+        end_date: str,
+        tags: Optional[List[str]] = None,
+        seller_id: Optional[Any] = None,
+        seller_name: Optional[str] = None,
+        status: AuctionStatus = AuctionStatus.ACTIVE,
+        image_url: Optional[str] = None,
+        category: str = "General",
+        min_increment: float = 10.0,
+        id: Optional[Any] = None
+    ):
+        self.id = id
+        self.title = title.strip()
+        self.description = description.strip()
+        self.starting_price = float(starting_price)
+        self.start_date = start_date
+        self.end_date = end_date
+        self.tags = [t.strip().lower() for t in (tags or []) if t.strip()]
+        self.seller_id = seller_id
+        self.seller_name = seller_name or "Sin nombre"
+        self.status = status
+        self.image_url = image_url or "/static/img/laptop.jpg"
+        self.category = category
+        self.min_increment = float(min_increment)
+        self.bids: List[Bid] = []
+        self.winner_id = None
+        self.winner_name = None
+        self.final_amount = None
+
+    @property
+    def current_price(self) -> float:
+        if self.bids:
+            return max(b.amount for b in self.bids)
+        return self.starting_price
+
+    @property
+    def highest_bidder(self) -> Optional[str]:
+        if self.bids:
+            sorted_bids = sorted(self.bids, key=lambda b: b.amount, reverse=True)
+            return sorted_bids[0].bidder_name
         return None
 
-    def registrar_oferta(self, usuario: UsuarioBase, monto: float):
-        if not self.abierta:
-            raise ValueError("La subasta está cerrada.")
+    def register_bid(self, user: User, amount: float) -> Bid:
+        if self.status != AuctionStatus.ACTIVE:
+            raise ValueError(f"No se pueden realizar pujas. La subasta se encuentra en estado '{self.status.value}'.")
 
-        if self.estado_moderacion != "Aprobada":
-            raise ValueError(f"La subasta no está disponible para pujas (Estado: {self.estado_moderacion}).")
-
-        min_requerido = self.precio_actual() + self.incremento_minimo
-        if monto < min_requerido:
+        min_required = self.current_price + self.min_increment if self.bids else self.starting_price
+        if amount < min_required:
             raise ValueError(
-                f"La puja debe ser de al menos ${min_requerido:.2f} (Precio actual: ${self.precio_actual():.2f} + incremento mínimo de ${self.incremento_minimo:.2f})."
+                f"La puja debe ser de al menos ${min_required:.2f} (Precio actual: ${self.current_price:.2f} + incremento mínimo: ${self.min_increment:.2f})."
             )
 
-        self.ofertas.append({
-            "usuario": usuario,
-            "monto": monto
-        })
-        return self.ofertas[-1]
+        bid = Bid(bidder_id=user.id, bidder_name=user.name, amount=amount)
+        self.bids.append(bid)
+        return bid
 
-    def cerrar(self):
-        self.abierta = False
-        if self.ofertas:
-            self.ganador = self.ofertas[-1]
 
-    def mostrar_ofertas(self):
-        if not self.ofertas:
-            print("Todavía no hay ofertas.")
-            return
-
-        for oferta in self.ofertas:
-            user_str = oferta['usuario'].nombre if hasattr(oferta['usuario'], 'nombre') else oferta['usuario']
-            print(f"{user_str}: ${oferta['monto']:.2f}")
+# ============================================================================
+# ALIASES COMPATIBLES (POO LEGACY Y CLI)
+# ============================================================================
+UsuarioBase = User
+Administrador = User
+Vendedor = User
+Comprador = User
+Visitante = User
+Usuario = User
+Subastador = User
+Postor = User
+Producto = lambda nombre, descripcion, precio_inicial, categoria="Tecnología", imagen_url=None: type('Prod', (), {
+    'nombre': nombre,
+    'descripcion': descripcion,
+    'precio_inicial': float(precio_inicial),
+    'categoria': categoria,
+    'imagen_url': imagen_url or "/static/img/laptop.jpg"
+})()
+Subasta = Auction
 
 
 # ============================================================================
 # ESQUEMAS DTO (DATA TRANSFER OBJECTS / PYDANTIC)
 # ============================================================================
 class LoginRequest(BaseModel):
-    email: str = Field(..., description="Correo electrónico registrado")
-    password: str = Field(..., min_length=4, description="Contraseña de usuario")
+    email: str = Field(..., description="Correo registrado del usuario")
+    password: str = Field(..., min_length=4, description="Contraseña")
 
 
 class RegisterRequest(BaseModel):
-    nombre: str = Field(..., min_length=2, description="Nombre completo o seudónimo")
+    nombre: Optional[str] = None
+    name: Optional[str] = None
     email: str = Field(..., description="Correo electrónico único")
     password: str = Field(..., min_length=4, description="Contraseña de acceso")
-    rol: Optional[str] = Field(default="ROLE_BUYER", description="Rol inicial: ROLE_BUYER o ROLE_SELLER")
+    rol: Optional[str] = Field(default="ROLE_BUYER", description="Rol inicial (ROLE_BUYER o ROLE_SELLER)")
 
 
 class PujaRequest(BaseModel):
-    monto: float = Field(..., gt=0, description="Monto ofrecido en USD")
+    monto: Optional[float] = None
+    amount: Optional[float] = None
 
 
-# Compatibilidad con endpoint legacy
-class OfertarRequest(BaseModel):
-    usuario: Optional[str] = Field(default=None, description="Nombre del participante (opcional si autenticado)")
-    monto: float = Field(..., gt=0, description="Monto ofrecido en USD")
+# Alias DTO legacy
+OfertarRequest = PujaRequest
 
 
 class CrearSubastaRequest(BaseModel):
-    nombre: str = Field(..., min_length=1, description="Nombre del producto")
-    descripcion: str = Field(..., min_length=1, description="Descripción detallada")
-    categoria: str = Field(default="Tecnología", description="Categoría del producto")
-    precio_inicial: float = Field(..., gt=0, description="Precio inicial de partida")
-    duracion_minutos: int = Field(default=60, gt=0, description="Duración estimada en minutos")
-    imagen_url: Optional[str] = Field(default=None, description="Ruta o URL de la imagen")
-    incremento_minimo: Optional[float] = Field(default=None, gt=0, description="Incremento mínimo opcional")
+    title: Optional[str] = None
+    nombre: Optional[str] = None
+    description: Optional[str] = None
+    descripcion: Optional[str] = None
+    startingPrice: Optional[float] = None
+    precio_inicial: Optional[float] = None
+    startDate: Optional[str] = None
+    endDate: Optional[str] = None
+    duracion_minutos: Optional[int] = 60
+    tags: Optional[List[str]] = Field(default_factory=list)
+    categoria: Optional[str] = "General"
+    imageUrl: Optional[str] = None
+    imagen_url: Optional[str] = None
+    incremento_minimo: Optional[float] = None
 
 
 class EditarSubastaRequest(BaseModel):
-    nombre: Optional[str] = Field(None, min_length=1)
-    descripcion: Optional[str] = Field(None, min_length=1)
-    categoria: Optional[str] = Field(None)
-    precio_inicial: Optional[float] = Field(None, gt=0)
-    duracion_minutos: Optional[int] = Field(None, gt=0)
-    imagen_url: Optional[str] = Field(None)
+    title: Optional[str] = None
+    nombre: Optional[str] = None
+    description: Optional[str] = None
+    descripcion: Optional[str] = None
+    startingPrice: Optional[float] = None
+    precio_inicial: Optional[float] = None
+    startDate: Optional[str] = None
+    endDate: Optional[str] = None
+    tags: Optional[List[str]] = None
+    categoria: Optional[str] = None
+    imageUrl: Optional[str] = None
+    imagen_url: Optional[str] = None
 
 
 class ModerarSubastaRequest(BaseModel):
-    accion: str = Field(..., description="Acción administrativa: 'Aprobar', 'Rechazar', 'ForzarCierre', 'Cancelar'")
-    motivo: Optional[str] = Field(None, description="Motivo de la moderación")
+    accion: Optional[str] = None
+    status: Optional[str] = None
+    motivo: Optional[str] = None
+
+
+class AdminAuctionStatusRequest(BaseModel):
+    # Acepta tanto 'status' (nuevo) como 'accion' (alias legacy del frontend)
+    status: Optional[str] = Field(None, description="Estado administrativo: 'Aprobar', 'Suspender', 'Eliminar', 'PROGRAMMED', 'ACTIVE', 'FINISHED', 'CANCELLED'")
+    accion: Optional[str] = Field(None, description="Alias de 'status'")
+    motivo: Optional[str] = None
+
+    def accion_efectiva(self) -> str:
+        valor = self.status or self.accion
+        if not valor:
+            raise ValueError("Debes indicar 'status' o 'accion' para moderar la subasta.")
+        return valor
 
 
 class CambiarEstadoUsuarioRequest(BaseModel):
-    estado: str = Field(..., description="Nuevo estado del usuario: 'Activo' o 'Suspendido'")
+    estado: str = Field(..., description="Nuevo estado: 'Activo' o 'Suspendido'")
 
 
 class ConfiguracionGlobalRequest(BaseModel):
-    incremento_minimo: Optional[float] = Field(None, gt=0, description="Incremento mínimo global en USD")
-    comision_porcentaje: Optional[float] = Field(None, ge=0, le=100, description="Porcentaje de comisión")
+    incremento_minimo: Optional[float] = Field(None, gt=0)
+    comision_porcentaje: Optional[float] = Field(None, ge=0, le=100)

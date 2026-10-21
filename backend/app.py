@@ -22,10 +22,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Database Startup
+# Database Startup: siembra automática y silenciosa si las colecciones están vacías
 @app.on_event("startup")
 def startup_event():
-    database.init_db()
+    try:
+        database.init_db()
+    except Exception as exc:  # no bloquear el arranque si MongoDB no está disponible
+        print(f"[Semilla automática] No se pudo inicializar MongoDB: {exc}")
 
 
 # Include API Routers
@@ -39,8 +42,10 @@ if os.path.exists(frontend_dir):
 
 
 @app.get("/")
+@app.get("/admin/dashboard")
 def servir_frontend():
     index_file = os.path.join(frontend_dir, "index.html")
     if os.path.exists(index_file):
         return FileResponse(index_file)
     return {"mensaje": "Backend API activo. Visita /docs para la documentación interactiva."}
+

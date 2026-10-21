@@ -1,6 +1,5 @@
 /**
- * SubastaHub Frontend Client with RBAC
- * Roles: ROLE_ADMIN, ROLE_SELLER, ROLE_BUYER, ROLE_GUEST
+ * Suba Frontend Client
  */
 
 // ============================================================================
@@ -8,6 +7,7 @@
 // ============================================================================
 let auctions = [];
 let activeFilter = 'todas';
+let activeTag = '';
 let currentSearch = '';
 let activeTab = 'catalogo';
 let activeAuctionForBid = null;
@@ -24,6 +24,18 @@ let authState = {
         estado: 'Activo'
     }
 };
+
+// Nombres de estado de subasta visibles (todo en español)
+const STATUS_LABELS = {
+    PROGRAMMED: 'Programada',
+    ACTIVE: 'Activa',
+    FINISHED: 'Finalizada',
+    CANCELLED: 'Cancelada'
+};
+
+function nombreEstado(status) {
+    return STATUS_LABELS[(status || '').toUpperCase()] || (status || 'Sin estado');
+}
 
 // ============================================================================
 // CLIENTE API HTTP CON AUTORIZACIÓN AUTOMÁTICA
@@ -56,6 +68,11 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchAuctions();
     setupEventListeners();
 
+    // Ruta directa /admin/dashboard: abre el panel administrativo si el usuario es administrador
+    if (window.location.pathname.replace(/\/$/, '') === '/admin/dashboard' && authState.user.rol === 'ROLE_ADMIN') {
+        switchTab('panel-admin');
+    }
+
     // Auto-poll cada 5 segundos para actualizar métricas y catálogo
     pollInterval = setInterval(() => {
         if (activeTab === 'catalogo') {
@@ -77,17 +94,11 @@ function initAuthUI() {
 function updateUserWidget() {
     const badge = document.getElementById('user-role-badge');
     const authBtn = document.getElementById('btn-auth-action');
-    const chipGuest = document.getElementById('chip-guest');
-    const chipBuyer = document.getElementById('chip-buyer');
-    const chipSeller = document.getElementById('chip-seller');
-    const chipAdmin = document.getElementById('chip-admin');
-
-    // Desmarcar todos los chips demo
-    [chipGuest, chipBuyer, chipSeller, chipAdmin].forEach(c => c && c.classList.remove('active'));
-
     const rol = authState.user.rol;
+
     badge.className = `role-badge role-${rol.replace('ROLE_', '').toLowerCase()}`;
-    badge.textContent = `${authState.user.nombre} (${rol})`;
+    badge.textContent = authState.token ? authState.user.nombre : '';
+    badge.classList.toggle('hidden', !authState.token);
 
     if (authState.token) {
         authBtn.textContent = 'Cerrar Sesión';
@@ -96,40 +107,32 @@ function updateUserWidget() {
         authBtn.textContent = 'Iniciar Sesión';
         authBtn.onclick = () => openModal('modal-auth');
     }
-
-    // Activar chip correspondiente
-    if (rol === 'ROLE_ADMIN') chipAdmin && chipAdmin.classList.add('active');
-    else if (rol === 'ROLE_SELLER') chipSeller && chipSeller.classList.add('active');
-    else if (rol === 'ROLE_BUYER') chipBuyer && chipBuyer.classList.add('active');
-    else chipGuest && chipGuest.classList.add('active');
 }
 
 function updateRBACVisibility() {
     const rol = authState.user.rol;
     const isBuyerOrHigher = ['ROLE_BUYER', 'ROLE_SELLER', 'ROLE_ADMIN'].includes(rol);
-    const isSellerOrHigher = ['ROLE_SELLER', 'ROLE_ADMIN'].includes(rol);
     const isAdmin = rol === 'ROLE_ADMIN';
 
     // Tabs según permisos de la matriz RBAC
     toggleElement('tab-favoritos', isBuyerOrHigher);
     toggleElement('tab-mis-pujas', isBuyerOrHigher);
-    toggleElement('tab-panel-vendedor', isSellerOrHigher);
+    toggleElement('tab-panel-vendedor', isBuyerOrHigher);
     toggleElement('tab-panel-admin', isAdmin);
 
-    // Botón de publicar subasta
-    toggleElement('btn-open-create-modal', isSellerOrHigher);
+    // Cualquier usuario registrado puede publicar y administrar sus propias subastas
+    toggleElement('btn-open-create-modal', isBuyerOrHigher);
 }
 
 function updateRoleContextBanner() {
     const banner = document.getElementById('role-context-text');
-    const rol = authState.user.rol;
-    const descripciones = {
-        'ROLE_GUEST': '<strong>Rol activo: Visitante (ROLE_GUEST)</strong> — Tienes acceso público al catálogo y detalle de subastas. Usa el simulador superior para probar permisos de Comprador, Vendedor o Administrador.',
-        'ROLE_BUYER': '<strong>Rol activo: Comprador (ROLE_BUYER)</strong> — Permisos: Realizar pujas manuales (con incremento mínimo garantizado), guardar favoritos y revisar tu historial personal.',
-        'ROLE_SELLER': '<strong>Rol activo: Vendedor (ROLE_SELLER)</strong> — Permisos: Hereda comprador + Publicar nuevas subastas, dashboard de mis subastas, editar (solo si 0 pujas) y cancelar (antes del primer incremento).',
-        'ROLE_ADMIN': '<strong>Rol activo: Administrador (ROLE_ADMIN)</strong> — Permisos: Control total en <code>/admin/*</code>, moderación de subastas, suspensión/reactivación de usuarios y parámetros globales del sistema.'
-    };
-    banner.innerHTML = descripciones[rol] || descripciones['ROLE_GUEST'];
+    if (!banner) return;
+
+    if (authState.token) {
+        banner.innerHTML = `<strong>Hola, ${authState.user.nombre}</strong> — Explora el catálogo y gestiona tu actividad en la plataforma.`;
+    } else {
+        banner.innerHTML = '<strong>Bienvenido a Suba</strong> — Explora el catálogo. Inicia sesión para pujar, guardar favoritos o publicar tus artículos.';
+    }
 }
 
 function toggleElement(id, visible) {
@@ -139,7 +142,7 @@ function toggleElement(id, visible) {
     else el.classList.add('hidden');
 }
 
-async function quickLoginDemo(email, password) {
+async function loginUser(email, password) {
     try {
         const data = await apiFetch('/api/auth/login', {
             method: 'POST',
@@ -177,23 +180,9 @@ function logoutUser() {
 
     initAuthUI();
     switchTab('catalogo');
-    showToast('Sesión cerrada. Ahora eres Visitante (ROLE_GUEST).', 'info');
+    showToast('Sesión cerrada.', 'info');
     fetchAuctions();
 }
-
-// Simulador de cambio de rol 1-Click
-document.getElementById('chip-guest').addEventListener('click', () => {
-    logoutUser();
-});
-document.getElementById('chip-buyer').addEventListener('click', () => {
-    quickLoginDemo('comprador@subastahub.com', 'comprador123');
-});
-document.getElementById('chip-seller').addEventListener('click', () => {
-    quickLoginDemo('vendedor@subastahub.com', 'vendedor123');
-});
-document.getElementById('chip-admin').addEventListener('click', () => {
-    quickLoginDemo('admin@subastahub.com', 'admin123');
-});
 
 // ============================================================================
 // CARGA DE DATOS & MÉTRICAS
@@ -270,15 +259,26 @@ function renderAuctionsGrid(lista) {
     const empty = document.getElementById('empty-state');
 
     let filtered = lista.filter(item => {
-        if (activeFilter === 'activas' && !item.abierta) return false;
-        if (activeFilter === 'cerradas' && item.abierta) return false;
+        const st = (item.status || '').toUpperCase();
+        if (activeFilter === 'activas' && st !== 'ACTIVE') return false;
+        if (activeFilter === 'programadas' && st !== 'PROGRAMMED') return false;
+        if (activeFilter === 'cerradas' && !['FINISHED', 'CANCELLED'].includes(st)) return false;
+
+        // Filtro por etiqueta (tag)
+        if (activeTag) {
+            const tags = (item.tags || []).map(t => t.toLowerCase());
+            if (!tags.includes(activeTag.toLowerCase())) return false;
+        }
 
         if (currentSearch) {
             const query = currentSearch.toLowerCase();
-            const matchName = item.producto.nombre.toLowerCase().includes(query);
-            const matchCat = item.producto.categoria.toLowerCase().includes(query);
-            const matchDesc = item.producto.descripcion.toLowerCase().includes(query);
-            return matchName || matchCat || matchDesc;
+            const tagsText = (item.tags || []).join(' ').toLowerCase();
+            const matchName = (item.title || item.producto.nombre || '').toLowerCase().includes(query);
+            const matchCat = (item.producto.categoria || '').toLowerCase().includes(query);
+            const matchDesc = (item.producto.descripcion || '').toLowerCase().includes(query);
+            const matchTags = tagsText.includes(query);
+            const matchSeller = (item.sellerName || item.vendedor_nombre || '').toLowerCase().includes(query);
+            return matchName || matchCat || matchDesc || matchTags || matchSeller;
         }
         return true;
     });
@@ -296,14 +296,22 @@ function renderAuctionsGrid(lista) {
     const canFav = canBid;
 
     grid.innerHTML = filtered.map(item => {
-        const isActiva = item.abierta;
-        const badgeStatus = isActiva
-            ? `<span class="badge badge-active">Activa</span>`
-            : `<span class="badge badge-closed">Finalizada</span>`;
+        const st = (item.status || '').toUpperCase();
+        const isActiva = st === 'ACTIVE';
+        const statusLabels = {
+            ACTIVE: `<span class="badge badge-active">Activa</span>`,
+            PROGRAMMED: `<span class="badge badge-programmed">Programada</span>`,
+            FINISHED: `<span class="badge badge-closed">Finalizada</span>`,
+            CANCELLED: `<span class="badge badge-closed">Cancelada</span>`
+        };
+        const badgeStatus = statusLabels[st] || `<span class="badge badge-closed">${nombreEstado(st)}</span>`;
 
         const leaderText = item.mayor_postor ? `Líder: ${item.mayor_postor}` : 'Sin postores aún';
-        const finalPriceLabel = isActiva ? 'Precio Actual' : 'Adjudicado Por';
+        const finalPriceLabel = isActiva ? 'Precio Actual' : (st === 'PROGRAMMED' ? 'Precio Inicial' : 'Adjudicado Por');
         const isFav = userFavs.includes(item.id);
+        const tagsHtml = (item.tags && item.tags.length)
+            ? `<div class="card-tags">${item.tags.map(t => `<span class="card-tag" onclick="filtrarPorTag('${t}')">#${t}</span>`).join('')}</div>`
+            : '';
 
         return `
             <article class="auction-card" data-id="${item.id}">
@@ -324,6 +332,7 @@ function renderAuctionsGrid(lista) {
 
                 <div class="card-content">
                     <h3 class="card-title">${item.producto.nombre}</h3>
+                    ${tagsHtml}
                     <p class="card-description">${item.producto.descripcion}</p>
 
                     <div class="card-pricing">
@@ -339,11 +348,15 @@ function renderAuctionsGrid(lista) {
 
                     <div class="card-meta">
                         <div class="meta-item">
-                            <span class="meta-icon">👤</span>
+                            <span class="meta-icon">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            </span>
                             <span>${leaderText}</span>
                         </div>
                         <div class="meta-item">
-                            <span class="meta-icon">⚡</span>
+                            <span class="meta-icon">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                            </span>
                             <span>Inc. mín: +$${item.incremento_minimo.toFixed(2)}</span>
                         </div>
                     </div>
@@ -358,7 +371,7 @@ function renderAuctionsGrid(lista) {
                             </button>
                         ` : `
                             <button class="btn btn-outline btn-block" disabled style="opacity: 0.5;">
-                                Cerrada
+                                ${st === 'PROGRAMMED' ? 'Próximamente' : 'Cerrada'}
                             </button>
                         `}
                     </div>
@@ -368,12 +381,22 @@ function renderAuctionsGrid(lista) {
     }).join('');
 }
 
+// Filtra el catálogo por una etiqueta (desde las tarjetas o la barra de tags)
+function filtrarPorTag(tag) {
+    activeTag = (activeTag === tag) ? '' : tag;
+    document.querySelectorAll('.tag-filter-chip').forEach(chip => {
+        chip.classList.toggle('active', chip.getAttribute('data-tag') === activeTag || (!activeTag && chip.getAttribute('data-tag') === ''));
+    });
+    if (activeTab !== 'catalogo') switchTab('catalogo');
+    else renderAuctionsGrid(auctions);
+}
+
 // ============================================================================
 // VISTA: MIS FAVORITOS (ROLE_BUYER+)
 // ============================================================================
 async function loadFavoritosView() {
     const container = document.getElementById('custom-view-container');
-    container.innerHTML = `<h2 style="margin-bottom: 1rem;">⭐ Mis Subastas Favoritas</h2><p>Cargando lista de seguimiento...</p>`;
+    container.innerHTML = `<h2 style="margin-bottom: 1rem;">Mis Subastas Favoritas</h2><p>Cargando lista de seguimiento...</p>`;
     try {
         const favs = await apiFetch('/api/mi-cuenta/favoritos');
         if (favs.length === 0) {
@@ -389,7 +412,7 @@ async function loadFavoritosView() {
 
         container.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                <h2>⭐ Mis Subastas Favoritas (${favs.length})</h2>
+                <h2>Mis Subastas Favoritas (${favs.length})</h2>
                 <button class="btn btn-outline" onclick="switchTab('catalogo')">Volver al Catálogo</button>
             </div>
             <div class="auctions-grid" id="favs-grid"></div>
@@ -427,7 +450,7 @@ async function loadFavoritosView() {
 // ============================================================================
 async function loadMisPujasView() {
     const container = document.getElementById('custom-view-container');
-    container.innerHTML = `<h2 style="margin-bottom: 1rem;">📜 Mi Historial Personal de Pujas</h2><p>Cargando ofertas...</p>`;
+    container.innerHTML = `<h2 style="margin-bottom: 1rem;">Mi Historial Personal de Pujas</h2><p>Cargando ofertas...</p>`;
     try {
         const pujas = await apiFetch('/api/mi-cuenta/pujas');
         if (pujas.length === 0) {
@@ -443,7 +466,7 @@ async function loadMisPujasView() {
 
         container.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                <h2>📜 Mi Historial Personal de Pujas (${pujas.length})</h2>
+                <h2>Mi Historial Personal de Pujas (${pujas.length})</h2>
                 <button class="btn btn-outline" onclick="switchTab('catalogo')">Volver al Catálogo</button>
             </div>
             <div class="history-table-container">
@@ -466,7 +489,7 @@ async function loadMisPujasView() {
                                 <td>${new Date(p.fecha).toLocaleString()}</td>
                                 <td>
                                     ${p.es_ganador_actual 
-                                        ? '<span class="badge-status badge-activo">Vas Ganando 🏆</span>' 
+                                        ? '<span class="badge-status badge-activo">Vas ganando</span>' 
                                         : '<span class="badge-status badge-suspendido">Superado</span>'}
                                 </td>
                             </tr>
@@ -485,13 +508,13 @@ async function loadMisPujasView() {
 // ============================================================================
 async function loadPanelVendedorView() {
     const container = document.getElementById('custom-view-container');
-    container.innerHTML = `<h2 style="margin-bottom: 1rem;">💼 Panel Vendedor — Mis Subastas</h2><p>Cargando dashboard...</p>`;
+    container.innerHTML = `<h2 style="margin-bottom: 1rem;">Mis Subastas</h2><p>Cargando panel...</p>`;
     try {
         const misSubastas = await apiFetch('/api/panel-vendedor/subastas');
         container.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
                 <div>
-                    <h2>💼 Dashboard del Vendedor</h2>
+                    <h2>Mis Subastas</h2>
                     <p style="color: var(--text-muted); font-size: 0.9rem;">Gestiona tus lotes. Puedes editar y cancelar artículos mientras no tengan ofertas registradas.</p>
                 </div>
                 <button class="btn btn-primary" onclick="openModal('modal-create')">+ Publicar Nueva Subasta</button>
@@ -506,7 +529,7 @@ async function loadPanelVendedorView() {
                             <th>Precio Actual</th>
                             <th>Pujas</th>
                             <th>Estado</th>
-                            <th>Acciones Vendedor</th>
+                            <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -551,26 +574,54 @@ async function loadPanelVendedorView() {
 // ============================================================================
 async function loadPanelAdminView() {
     const container = document.getElementById('custom-view-container');
-    container.innerHTML = `<h2 style="margin-bottom: 1rem;">⚡ Panel de Control Administrativo (ROLE_ADMIN)</h2><p>Cargando datos del sistema...</p>`;
+    container.innerHTML = `<h2 style="margin-bottom: 1rem;">Panel de Control</h2><p>Cargando datos del sistema...</p>`;
     try {
-        const [usuarios, subastas, config] = await Promise.all([
-            apiFetch('/api/admin/usuarios'),
-            apiFetch('/api/admin/subastas'),
-            apiFetch('/api/admin/configuracion')
-        ]);
+        const dashboard = await apiFetch('/api/admin/dashboard');
+        const metricas = dashboard.metricas || {};
+        const subastas = dashboard.subastas || [];
+        const usuarios = dashboard.usuarios || [];
+        const config = await apiFetch('/api/admin/configuracion');
 
         container.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                 <div>
-                    <h2>⚡ Panel de Control Administrativo (ROLE_ADMIN)</h2>
-                    <p style="color: var(--text-muted); font-size: 0.9rem;">Acceso total: Moderación de subastas, administración de usuarios y configuración global.</p>
+                    <h2>Panel de Control</h2>
+                    <p style="color: var(--text-muted); font-size: 0.9rem;">Vista global: todas las subastas de la plataforma, métricas y moderación.</p>
                 </div>
                 <button class="btn btn-outline" onclick="switchTab('catalogo')">Volver al Catálogo</button>
             </div>
 
+            <!-- Métricas generales del panel -->
+            <section class="metrics-grid" style="margin-bottom: 2rem;">
+                <div class="metric-card">
+                    <div class="metric-info">
+                        <span class="metric-label">Total Usuarios</span>
+                        <h2 class="metric-value">${metricas.total_usuarios ?? 0}</h2>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-info">
+                        <span class="metric-label">Subastas Activas</span>
+                        <h2 class="metric-value text-emerald">${metricas.subastas_activas ?? 0}</h2>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-info">
+                        <span class="metric-label">Subastas Finalizadas</span>
+                        <h2 class="metric-value">${metricas.subastas_finalizadas ?? 0}</h2>
+                    </div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-info">
+                        <span class="metric-label">Volumen Total Pujado</span>
+                        <h2 class="metric-value text-amber">$${(metricas.volumen_total ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</h2>
+                    </div>
+                </div>
+            </section>
+
             <!-- Parámetros Globales -->
             <div style="background: var(--bg-surface-elevated); padding: 1.25rem; border-radius: 12px; margin-bottom: 2rem; border: 1px solid var(--border-subtle);">
-                <h3 style="margin-bottom: 1rem; color: var(--cyan);">⚙️ Parámetros Globales del Sistema</h3>
+                <h3 style="margin-bottom: 1rem; color: var(--cyan);">Parámetros Globales del Sistema</h3>
                 <form id="form-admin-config" style="display: flex; gap: 1.5rem; align-items: flex-end; flex-wrap: wrap;">
                     <div class="form-group" style="margin-bottom: 0;">
                         <label>Incremento Mínimo Global ($):</label>
@@ -584,42 +635,46 @@ async function loadPanelAdminView() {
                 </form>
             </div>
 
-            <!-- Moderación de Subastas -->
+            <!-- Moderación de Subastas (Vista Global) -->
             <div style="margin-bottom: 2.5rem;">
-                <h3 style="margin-bottom: 1rem;">🛡️ Moderación de Subastas (${subastas.length})</h3>
+                <h3 style="margin-bottom: 1rem;">Moderación de Subastas — Vista Global (${subastas.length})</h3>
                 <div class="history-table-container">
                     <table class="admin-table">
                         <thead>
                             <tr>
                                 <th>#</th>
                                 <th>Producto</th>
-                                <th>Vendedor</th>
+                                <th>Publicado por</th>
                                 <th>Precio Actual</th>
-                                <th>Estado Moderación</th>
-                                <th>Acciones Admin</th>
+                                <th>Etiquetas</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${subastas.map(s => `
+                            ${subastas.map(s => {
+                                const st = (s.status || '').toUpperCase();
+                                const estadoBadge = ['ACTIVE', 'PROGRAMMED'].includes(st) ? 'badge-activo' : 'badge-suspendido';
+                                const tagsRow = (s.tags || []).map(t => `<span class="card-tag">#${t}</span>`).join(' ') || '<span style="color: var(--text-muted);">—</span>';
+                                return `
                                 <tr>
                                     <td><strong>#${s.id}</strong></td>
-                                    <td>${s.producto.nombre}</td>
-                                    <td>${s.vendedor_nombre || 'N/A'}</td>
-                                    <td>$${s.precio_actual.toFixed(2)}</td>
+                                    <td>${s.title || s.producto.nombre}</td>
+                                    <td>${s.sellerName || s.vendedor_nombre || 'Sin datos'}</td>
+                                    <td>$${s.currentPrice.toFixed(2)}</td>
+                                    <td style="max-width: 200px;">${tagsRow}</td>
                                     <td>
-                                        <span class="badge-status ${s.estado_moderacion === 'Aprobada' ? 'badge-activo' : 'badge-suspendido'}">
-                                            ${s.estado_moderacion}
-                                        </span>
+                                        <span class="badge-status ${estadoBadge}">${nombreEstado(st)}</span>
                                     </td>
                                     <td>
                                         <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
-                                            <button class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;" onclick="adminModerarSubasta(${s.id}, 'Aprobar')">Aprobar</button>
-                                            <button class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; border-color: var(--amber); color: var(--amber);" onclick="adminModerarSubasta(${s.id}, 'ForzarCierre')">Forzar Cierre</button>
-                                            <button class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; border-color: var(--rose); color: var(--rose);" onclick="adminModerarSubasta(${s.id}, 'Cancelar')">Cancelar</button>
+                                            <button class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; border-color: var(--emerald); color: var(--emerald);" onclick="adminModerarSubasta(${s.id}, 'Aprobar')">Aprobar</button>
+                                            <button class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; border-color: var(--amber); color: var(--amber);" onclick="adminModerarSubasta(${s.id}, 'Suspender')">Suspender</button>
+                                            <button class="btn btn-outline" style="padding: 0.25rem 0.5rem; font-size: 0.75rem; border-color: var(--rose); color: var(--rose);" onclick="adminModerarSubasta(${s.id}, 'Eliminar')">Eliminar</button>
                                         </div>
                                     </td>
-                                </tr>
-                            `).join('')}
+                                </tr>`;
+                            }).join('')}
                         </tbody>
                     </table>
                 </div>
@@ -627,7 +682,7 @@ async function loadPanelAdminView() {
 
             <!-- Gestión de Usuarios -->
             <div>
-                <h3 style="margin-bottom: 1rem;">👥 Usuarios Registrados (${usuarios.length})</h3>
+                <h3 style="margin-bottom: 1rem;">Usuarios Registrados (${usuarios.length})</h3>
                 <div class="history-table-container">
                     <table class="admin-table">
                         <thead>
@@ -635,7 +690,6 @@ async function loadPanelAdminView() {
                                 <th>ID</th>
                                 <th>Nombre</th>
                                 <th>Email</th>
-                                <th>Rol</th>
                                 <th>Estado</th>
                                 <th>Acción</th>
                             </tr>
@@ -646,7 +700,6 @@ async function loadPanelAdminView() {
                                     <td><strong>#${u.id}</strong></td>
                                     <td>${u.nombre}</td>
                                     <td>${u.email}</td>
-                                    <td><span class="role-badge role-${u.rol.replace('ROLE_', '').toLowerCase()}">${u.rol}</span></td>
                                     <td>
                                         <span class="badge-status ${u.estado === 'Activo' ? 'badge-activo' : 'badge-suspendido'}">
                                             ${u.estado}
@@ -692,7 +745,7 @@ async function loadPanelAdminView() {
 // ============================================================================
 async function toggleFavorito(subastaId) {
     if (!['ROLE_BUYER', 'ROLE_SELLER', 'ROLE_ADMIN'].includes(authState.user.rol)) {
-        showToast('Debes iniciar sesión con rol Comprador para guardar favoritos.', 'warning');
+        showToast('Debes iniciar sesión para guardar favoritos.', 'warning');
         openModal('modal-auth');
         return;
     }
@@ -719,7 +772,7 @@ async function toggleFavorito(subastaId) {
 
 function abrirModalPuja(subastaId) {
     if (!['ROLE_BUYER', 'ROLE_SELLER', 'ROLE_ADMIN'].includes(authState.user.rol)) {
-        showToast('Debes identificarte como Comprador para realizar una puja.', 'warning');
+        showToast('Debes iniciar sesión para realizar una puja.', 'warning');
         openModal('modal-auth');
         return;
     }
@@ -735,7 +788,7 @@ function abrirModalPuja(subastaId) {
     const minRequired = item.total_ofertas > 0 ? item.precio_actual + item.incremento_minimo : item.producto.precio_inicial;
     document.getElementById('modal-min-required').textContent = `$${minRequired.toFixed(2)}`;
 
-    document.getElementById('bid-user-name').value = `${authState.user.nombre} (${authState.user.rol})`;
+    document.getElementById('bid-user-name').value = authState.user.nombre;
     const bidAmountInput = document.getElementById('bid-amount');
     bidAmountInput.value = minRequired.toFixed(2);
     bidAmountInput.min = minRequired;
@@ -814,10 +867,16 @@ document.getElementById('form-create-auction').addEventListener('submit', async 
         const incremento_minimo = parseFloat(document.getElementById('create-increment').value) || 10;
         const imagen_url = document.querySelector('input[name="image-choice"]:checked').value;
         const descripcion = document.getElementById('create-description').value;
+        const tags = document.getElementById('create-tags').value
+            .split(',')
+            .map(t => t.trim().toLowerCase())
+            .filter(t => t.length > 0);
+        const startDate = document.getElementById('create-start-date').value || null;
+        const endDate = document.getElementById('create-end-date').value || null;
 
         const res = await apiFetch('/api/subastas/nueva', {
             method: 'POST',
-            body: { nombre, descripcion, categoria, precio_inicial, duracion_minutos, incremento_minimo, imagen_url }
+            body: { nombre, descripcion, categoria, precio_inicial, duracion_minutos, incremento_minimo, imagen_url, tags, startDate, endDate }
         });
         showToast(res.mensaje, 'success');
         closeModal('modal-create');
@@ -841,21 +900,40 @@ function abrirModalEditar(subastaId) {
     document.getElementById('edit-category').value = item.producto.categoria;
     document.getElementById('edit-price').value = item.producto.precio_inicial;
     document.getElementById('edit-description').value = item.producto.descripcion;
+    document.getElementById('edit-tags').value = (item.tags || []).join(', ');
+    document.getElementById('edit-start-date').value = toDatetimeLocalValue(item.startDate);
+    document.getElementById('edit-end-date').value = toDatetimeLocalValue(item.endDate);
 
     openModal('modal-edit');
+}
+
+// Convierte una fecha ISO a formato aceptado por <input type="datetime-local">
+function toDatetimeLocalValue(isoStr) {
+    if (!isoStr) return '';
+    const d = new Date(isoStr);
+    if (isNaN(d.getTime())) return '';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 document.getElementById('form-edit-auction').addEventListener('submit', async (e) => {
     e.preventDefault();
     const id = document.getElementById('edit-subasta-id').value;
     try {
+        const tags = document.getElementById('edit-tags').value
+            .split(',')
+            .map(t => t.trim().toLowerCase())
+            .filter(t => t.length > 0);
         const res = await apiFetch(`/api/subastas/${id}/editar`, {
             method: 'PUT',
             body: {
                 nombre: document.getElementById('edit-name').value,
                 categoria: document.getElementById('edit-category').value,
                 precio_inicial: parseFloat(document.getElementById('edit-price').value),
-                descripcion: document.getElementById('edit-description').value
+                descripcion: document.getElementById('edit-description').value,
+                tags,
+                startDate: document.getElementById('edit-start-date').value || undefined,
+                endDate: document.getElementById('edit-end-date').value || undefined
             }
         });
         showToast(res.mensaje, 'success');
@@ -893,18 +971,19 @@ async function cerrarSubastaVendedor(subastaId) {
     }
 }
 
-// Admin: Moderación de Subastas
+// Admin: Moderación de Subastas (Aprobar, Suspender, Eliminar)
 async function adminModerarSubasta(subastaId, accion) {
-    const motivo = prompt(`Motivo para la acción '${accion}':`, 'Acción realizada por Administrador');
+    if (accion === 'Eliminar' && !confirm('¿Eliminar DEFINITIVAMENTE esta subasta? Esta acción no se puede deshacer.')) return;
+    const motivo = prompt(`Motivo para la acción '${accion}' (opcional):`, 'Acción realizada desde el panel');
     if (motivo === null) return;
     try {
         const res = await apiFetch(`/api/admin/subastas/${subastaId}/moderar`, {
             method: 'PUT',
-            body: { accion, motivo }
+            body: { status: accion, accion, motivo }
         });
         showToast(res.mensaje, 'success');
         loadPanelAdminView();
-        fetchAuctions();
+        fetchAuctions(true);
     } catch (err) {
         showToast(err.message, 'error');
     }
@@ -947,6 +1026,17 @@ function setupEventListeners() {
         });
     }
 
+    // Filtro rápido por Etiquetas (Tags)
+    document.querySelectorAll('.tag-filter-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            activeTag = chip.getAttribute('data-tag') || '';
+            document.querySelectorAll('.tag-filter-chip').forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            if (activeTab !== 'catalogo') switchTab('catalogo');
+            else renderAuctionsGrid(auctions);
+        });
+    });
+
     // Modal Create
     const btnOpenCreate = document.getElementById('btn-open-create-modal');
     if (btnOpenCreate) btnOpenCreate.addEventListener('click', () => openModal('modal-create'));
@@ -986,7 +1076,7 @@ function setupEventListeners() {
         e.preventDefault();
         const email = document.getElementById('login-email').value;
         const password = document.getElementById('login-password').value;
-        await quickLoginDemo(email, password);
+        await loginUser(email, password);
     });
 
     // Submit Register Manual
@@ -1044,8 +1134,13 @@ function showToast(message, type = 'info') {
 
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
-    const icon = type === 'success' ? '✓' : (type === 'error' ? '✕' : 'ℹ');
-    toast.innerHTML = `<span>${icon}</span> <span>${message}</span>`;
+    const icons = {
+        success: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+        error: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fb7185" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+        warning: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+        info: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#60a5fa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
+    };
+    toast.innerHTML = `${icons[type] || icons.info} <span>${message}</span>`;
     container.appendChild(toast);
 
     setTimeout(() => {
