@@ -1056,19 +1056,52 @@ function setupEventListeners() {
 
     // Modal Auth
     document.getElementById('btn-close-auth-modal')?.addEventListener('click', () => closeModal('modal-auth'));
-    document.getElementById('tab-login-btn')?.addEventListener('click', () => {
-        document.getElementById('tab-login-btn').classList.add('active');
-        document.getElementById('tab-register-btn').classList.remove('active');
-        document.getElementById('form-login').classList.remove('hidden');
-        document.getElementById('form-register').classList.add('hidden');
-        document.getElementById('auth-modal-title').textContent = 'Iniciar Sesión';
+
+    const setAuthTab = (tab) => {
+        const isLogin = tab === 'login';
+        const loginTab = document.getElementById('tab-login-btn');
+        const registerTab = document.getElementById('tab-register-btn');
+
+        loginTab.classList.toggle('active', isLogin);
+        registerTab.classList.toggle('active', !isLogin);
+        loginTab.setAttribute('aria-selected', String(isLogin));
+        registerTab.setAttribute('aria-selected', String(!isLogin));
+        document.getElementById('form-login').classList.toggle('hidden', !isLogin);
+        document.getElementById('form-register').classList.toggle('hidden', isLogin);
+
+        document.getElementById('auth-modal-title').textContent = isLogin ? 'Inicia sesión' : 'Crea tu cuenta';
+        document.getElementById('auth-modal-subtitle').textContent = isLogin
+            ? 'Puja, guarda favoritos y publica tus artículos.'
+            : 'Elige cómo quieres participar en Suba.';
+
+        const demoHint = document.querySelector('#modal-auth .auth-hint');
+        if (demoHint) demoHint.classList.toggle('hidden', !isLogin);
+    };
+
+    document.getElementById('tab-login-btn')?.addEventListener('click', () => setAuthTab('login'));
+    document.getElementById('tab-register-btn')?.addEventListener('click', () => setAuthTab('register'));
+
+    // Autocompletar cuentas de demostración
+    document.querySelectorAll('.demo-account').forEach(btn => {
+        btn.addEventListener('click', () => {
+            setAuthTab('login');
+            document.getElementById('login-email').value = btn.dataset.email || '';
+            document.getElementById('login-password').value = btn.dataset.password || '';
+            document.getElementById('login-password').focus();
+            showToast('Credenciales cargadas. Presiona Ingresar.', 'info');
+        });
     });
-    document.getElementById('tab-register-btn')?.addEventListener('click', () => {
-        document.getElementById('tab-register-btn').classList.add('active');
-        document.getElementById('tab-login-btn').classList.remove('active');
-        document.getElementById('form-register').classList.remove('hidden');
-        document.getElementById('form-login').classList.add('hidden');
-        document.getElementById('auth-modal-title').textContent = 'Crear Cuenta';
+
+    // Mostrar / ocultar contraseña
+    document.querySelectorAll('.auth-toggle-password').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const input = document.getElementById(btn.getAttribute('data-target'));
+            if (!input) return;
+            const show = input.type === 'password';
+            input.type = show ? 'text' : 'password';
+            btn.classList.toggle('is-visible', show);
+            btn.setAttribute('aria-label', show ? 'Ocultar contraseña' : 'Mostrar contraseña');
+        });
     });
 
     // Submit Login Manual
