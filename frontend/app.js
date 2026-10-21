@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
         switchTab('panel-admin');
     }
 
-    // Auto-poll cada 5 segundos para actualizar métricas y catálogo
+    // Actualización automática cada 5 segundos de métricas y catálogo
     pollInterval = setInterval(() => {
         if (activeTab === 'catalogo') {
             fetchMetrics(true);
