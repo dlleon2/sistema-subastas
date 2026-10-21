@@ -1073,24 +1073,10 @@ function setupEventListeners() {
         document.getElementById('auth-modal-subtitle').textContent = isLogin
             ? 'Puja, guarda favoritos y publica tus artículos.'
             : 'Elige cómo quieres participar en Suba.';
-
-        const demoHint = document.querySelector('#modal-auth .auth-hint');
-        if (demoHint) demoHint.classList.toggle('hidden', !isLogin);
     };
 
     document.getElementById('tab-login-btn')?.addEventListener('click', () => setAuthTab('login'));
     document.getElementById('tab-register-btn')?.addEventListener('click', () => setAuthTab('register'));
-
-    // Autocompletar cuentas de demostración
-    document.querySelectorAll('.demo-account').forEach(btn => {
-        btn.addEventListener('click', () => {
-            setAuthTab('login');
-            document.getElementById('login-email').value = btn.dataset.email || '';
-            document.getElementById('login-password').value = btn.dataset.password || '';
-            document.getElementById('login-password').focus();
-            showToast('Credenciales cargadas. Presiona Ingresar.', 'info');
-        });
-    });
 
     // Mostrar / ocultar contraseña
     document.querySelectorAll('.auth-toggle-password').forEach(btn => {
