@@ -280,7 +280,7 @@ def realizar_oferta_legacy(
     req: OfertarRequest,
     current_user: Dict[str, Any] = Depends(get_current_user)
 ):
-    nombre = current_user.get("nombre") if current_user.get("id") else (getattr(req, 'usuario', None) or "Comprador")
+    nombre = current_user.get("nombre") if current_user.get("id") else (getattr(req, 'usuario', None) or "Participante")
     monto = req.monto if req.monto is not None else req.amount
     try:
         subasta_actualizada = database.registrar_oferta(

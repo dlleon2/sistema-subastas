@@ -104,7 +104,7 @@ class Auction:
         self.end_date = end_date
         self.tags = [t.strip().lower() for t in (tags or []) if t.strip()]
         self.seller_id = seller_id
-        self.seller_name = seller_name or "Vendedor"
+        self.seller_name = seller_name or "Sin nombre"
         self.status = status
         self.image_url = image_url or "/static/img/laptop.jpg"
         self.category = category

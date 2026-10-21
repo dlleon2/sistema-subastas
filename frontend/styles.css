@@ -1053,58 +1053,6 @@ textarea:focus {
 /* ==========================================================================
    RBAC & AUTH STYLES
    ========================================================================== */
-.quick-demo-bar {
-    background: rgba(15, 23, 42, 0.95);
-    border-bottom: 1px solid var(--border-subtle);
-    padding: 0.5rem 1.5rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.85rem;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-}
-
-.quick-demo-title {
-    color: var(--text-muted);
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.demo-chips {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-    flex-wrap: wrap;
-}
-
-.demo-chip {
-    padding: 0.25rem 0.75rem;
-    border-radius: var(--radius-full);
-    font-size: 0.78rem;
-    font-weight: 600;
-    cursor: pointer;
-    border: 1px solid transparent;
-    transition: var(--transition);
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--text-secondary);
-}
-
-.demo-chip:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
-}
-
-.demo-chip.active {
-    box-shadow: 0 0 10px rgba(99, 102, 241, 0.4);
-}
-
-.demo-chip-admin.active { background: rgba(244, 63, 94, 0.2); border-color: var(--rose); color: #fda4af; }
-.demo-chip-seller.active { background: rgba(245, 158, 11, 0.2); border-color: var(--amber); color: #fcd34d; }
-.demo-chip-buyer.active { background: rgba(16, 185, 129, 0.2); border-color: var(--emerald); color: #6ee7b7; }
-.demo-chip-guest.active { background: rgba(100, 116, 139, 0.2); border-color: var(--text-muted); color: var(--text-primary); }
-
 .user-session-widget {
     display: flex;
     align-items: center;
@@ -1236,6 +1184,43 @@ textarea:focus {
 .auth-tab.active {
     color: var(--primary);
     border-bottom-color: var(--primary);
+}
+
+/* Cuentas de prueba sugeridas dentro del modal de acceso */
+.auth-hint {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-subtle);
+}
+
+.auth-hint-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.65rem;
+}
+
+.auth-hint-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+}
+
+.auth-hint-list li {
+    display: flex;
+    gap: 0.5rem;
+    align-items: baseline;
+}
+
+.auth-hint-list li span {
+    flex: 0 0 104px;
+    font-weight: 600;
+    color: var(--text-primary);
 }
 
 /* Admin Table & Badges */

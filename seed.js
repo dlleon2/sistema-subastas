@@ -34,13 +34,14 @@ db.configuracion.updateOne(
   { upsert: true }
 );
 
-// 3. Usuarios Simulados (passwords reales: admin123, carlos123, ana123, mateo123)
+// 3. Usuarios de prueba (1 administrador, 2 vendedores, 2 compradores)
+//    Contraseñas reales: admin123, carlos123, lucia123, ana123, mateo123
 db.usuarios.deleteMany({});
 db.usuarios.insertMany([
   {
     id: 1,
-    name: "Administrador General",
-    nombre: "Administrador General",
+    name: "Andrés",
+    nombre: "Andrés",
     email: "admin@subastas.com",
     password_hash: hashPassword("admin123"),
     rol: "ROLE_ADMIN",
@@ -52,8 +53,8 @@ db.usuarios.insertMany([
   },
   {
     id: 2,
-    name: "Carlos Vendedor",
-    nombre: "Carlos Vendedor",
+    name: "Carlos",
+    nombre: "Carlos",
     email: "carlos@subastas.com",
     password_hash: hashPassword("carlos123"),
     rol: "ROLE_SELLER",
@@ -65,8 +66,8 @@ db.usuarios.insertMany([
   },
   {
     id: 3,
-    name: "Ana Compradora",
-    nombre: "Ana Compradora",
+    name: "Ana",
+    nombre: "Ana",
     email: "ana@subastas.com",
     password_hash: hashPassword("ana123"),
     rol: "ROLE_BUYER",
@@ -78,8 +79,8 @@ db.usuarios.insertMany([
   },
   {
     id: 4,
-    name: "Mateo Coleccionista",
-    nombre: "Mateo Coleccionista",
+    name: "Mateo",
+    nombre: "Mateo",
     email: "mateo@subastas.com",
     password_hash: hashPassword("mateo123"),
     rol: "ROLE_BUYER",
@@ -87,6 +88,19 @@ db.usuarios.insertMany([
     estado: "Activo",
     status: "Active",
     favoritos: [2, 6],
+    creado_en: new Date().toISOString()
+  },
+  {
+    id: 5,
+    name: "Lucía",
+    nombre: "Lucía",
+    email: "lucia@subastas.com",
+    password_hash: hashPassword("lucia123"),
+    rol: "ROLE_SELLER",
+    role: "ROLE_SELLER",
+    estado: "Activo",
+    status: "Active",
+    favoritos: [1, 5],
     creado_en: new Date().toISOString()
   }
 ]);
@@ -112,14 +126,14 @@ db.subastas.insertMany([
     tags: ["libros", "coleccion", "antiguedades", "literatura"],
     sellerId: 2,
     userId: 2,
-    sellerName: "Carlos Vendedor",
+    sellerName: "Carlos",
     status: "ACTIVE",
     imageUrl: "/static/img/laptop.jpg",
     category: "Libros",
     minIncrement: 15.00,
     bids: [
-      { id: 1, bidderId: 3, bidderName: "Ana Compradora", amount: 250.00, createdAt: ayer },
-      { id: 2, bidderId: 4, bidderName: "Mateo Coleccionista", amount: 280.00, createdAt: ahora.toISOString() }
+      { id: 1, bidderId: 3, bidderName: "Ana", amount: 250.00, createdAt: ayer },
+      { id: 2, bidderId: 4, bidderName: "Mateo", amount: 280.00, createdAt: ahora.toISOString() }
     ],
     creada_en: haceDosDias
   },
@@ -133,13 +147,13 @@ db.subastas.insertMany([
     tags: ["tecnologia", "electronica", "computacion", "apple"],
     sellerId: 2,
     userId: 2,
-    sellerName: "Carlos Vendedor",
+    sellerName: "Carlos",
     status: "ACTIVE",
     imageUrl: "/static/img/laptop.jpg",
     category: "Tecnología",
     minIncrement: 50.00,
     bids: [
-      { id: 1, bidderId: 3, bidderName: "Ana Compradora", amount: 1900.00, createdAt: ahora.toISOString() }
+      { id: 1, bidderId: 3, bidderName: "Ana", amount: 1900.00, createdAt: ahora.toISOString() }
     ],
     creada_en: ayer
   },
@@ -151,9 +165,9 @@ db.subastas.insertMany([
     startDate: ayer,
     endDate: enTresDias,
     tags: ["arte", "pintura", "coleccion", "decoracion"],
-    sellerId: 4,
-    userId: 4,
-    sellerName: "Mateo Coleccionista",
+    sellerId: 5,
+    userId: 5,
+    sellerName: "Lucía",
     status: "ACTIVE",
     imageUrl: "/static/img/reloj.jpg",
     category: "Arte",
@@ -171,14 +185,14 @@ db.subastas.insertMany([
     tags: ["relojes", "coleccion", "lujo", "joyeria"],
     sellerId: 2,
     userId: 2,
-    sellerName: "Carlos Vendedor",
+    sellerName: "Carlos",
     status: "ACTIVE",
     imageUrl: "/static/img/reloj.jpg",
     category: "Coleccionables",
     minIncrement: 20.00,
     bids: [
-      { id: 1, bidderId: 4, bidderName: "Mateo Coleccionista", amount: 650.00, createdAt: haceDosDias },
-      { id: 2, bidderId: 3, bidderName: "Ana Compradora", amount: 700.00, createdAt: ayer }
+      { id: 1, bidderId: 4, bidderName: "Mateo", amount: 650.00, createdAt: haceDosDias },
+      { id: 2, bidderId: 3, bidderName: "Ana", amount: 700.00, createdAt: ayer }
     ],
     creada_en: haceDosDias
   },
@@ -190,9 +204,9 @@ db.subastas.insertMany([
     startDate: manana,
     endDate: enUnaSemana,
     tags: ["fotografia", "coleccion", "electronica", "vintage"],
-    sellerId: 4,
-    userId: 4,
-    sellerName: "Mateo Coleccionista",
+    sellerId: 5,
+    userId: 5,
+    sellerName: "Lucía",
     status: "PROGRAMMED",
     imageUrl: "/static/img/auriculares.jpg",
     category: "Fotografía",
@@ -210,7 +224,7 @@ db.subastas.insertMany([
     tags: ["libros", "literatura", "coleccion", "antiguedades"],
     sellerId: 2,
     userId: 2,
-    sellerName: "Carlos Vendedor",
+    sellerName: "Carlos",
     status: "PROGRAMMED",
     imageUrl: "/static/img/laptop.jpg",
     category: "Libros",
@@ -228,14 +242,14 @@ db.subastas.insertMany([
     tags: ["videojuegos", "coleccion", "retro", "electronica"],
     sellerId: 2,
     userId: 2,
-    sellerName: "Carlos Vendedor",
+    sellerName: "Carlos",
     status: "FINISHED",
     imageUrl: "/static/img/auriculares.jpg",
     category: "Videojuegos",
     minIncrement: 10.00,
     bids: [
-      { id: 1, bidderId: 3, bidderName: "Ana Compradora", amount: 340.00, createdAt: haceDosDias },
-      { id: 2, bidderId: 4, bidderName: "Mateo Coleccionista", amount: 390.00, createdAt: ayer }
+      { id: 1, bidderId: 3, bidderName: "Ana", amount: 340.00, createdAt: haceDosDias },
+      { id: 2, bidderId: 4, bidderName: "Mateo", amount: 390.00, createdAt: ayer }
     ],
     creada_en: haceUnaSemana
   },
@@ -247,9 +261,9 @@ db.subastas.insertMany([
     startDate: ayer,
     endDate: enUnaSemana,
     tags: ["tecnologia", "drones", "fotografia", "electronica"],
-    sellerId: 3,
-    userId: 3,
-    sellerName: "Ana Compradora",
+    sellerId: 5,
+    userId: 5,
+    sellerName: "Lucía",
     status: "ACTIVE",
     imageUrl: "/static/img/auriculares.jpg",
     category: "Tecnología",
@@ -260,6 +274,6 @@ db.subastas.insertMany([
 ]);
 
 db.counters.updateOne({ _id: "subasta_id" }, { $set: { seq: 8 } }, { upsert: true });
-db.counters.updateOne({ _id: "usuario_id" }, { $set: { seq: 4 } }, { upsert: true });
+db.counters.updateOne({ _id: "usuario_id" }, { $set: { seq: 5 } }, { upsert: true });
 
 print("=== SEED COMPLETADO CON ÉXITO ===");

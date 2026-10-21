@@ -22,10 +22,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Database Startup
+# Database Startup: siembra automática y silenciosa si las colecciones están vacías
 @app.on_event("startup")
 def startup_event():
-    database.init_db()
+    try:
+        database.init_db()
+    except Exception as exc:  # no bloquear el arranque si MongoDB no está disponible
+        print(f"[Semilla automática] No se pudo inicializar MongoDB: {exc}")
 
 
 # Include API Routers

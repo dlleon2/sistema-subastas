@@ -110,7 +110,7 @@ def _format_subasta(doc: dict) -> dict:
     end_date = doc.get("endDate") or (datetime.fromisoformat(start_date) + timedelta(minutes=doc.get("duracion_minutos", 60))).isoformat()
     tags = [t.lower().strip() for t in doc.get("tags", []) if t.strip()]
     seller_id = doc.get("sellerId") or doc.get("userId") or doc.get("vendedor_id")
-    seller_name = doc.get("sellerName") or doc.get("vendedor_nombre") or "Vendedor"
+    seller_name = doc.get("sellerName") or doc.get("vendedor_nombre") or "Sin nombre"
     image_url = doc.get("imageUrl") or doc.get("producto", {}).get("imagen_url") or "/static/img/laptop.jpg"
     category = doc.get("category") or doc.get("producto", {}).get("categoria") or "General"
 
@@ -135,7 +135,7 @@ def _format_subasta(doc: dict) -> dict:
     for idx, b in enumerate(sorted_bids, 1):
         amt = float(b.get("amount") or b.get("monto") or 0.0)
         dt = b.get("createdAt") or b.get("fecha") or ""
-        u_name = b.get("bidderName") or b.get("usuario_nombre") or "Comprador"
+        u_name = b.get("bidderName") or b.get("usuario_nombre") or "Participante"
         u_id = b.get("bidderId") or b.get("usuario_id")
         historial.append({
             "id": b.get("id", idx),
@@ -336,7 +336,7 @@ def cambiar_estado_usuario(usuario_id: Any, nuevo_estado: str) -> Dict[str, Any]
         raise ValueError("Usuario no encontrado.")
 
     if user.get("rol") == RolUsuario.ROLE_ADMIN.value or user.get("role") == RolUsuario.ROLE_ADMIN.value:
-        raise ValueError("No está permitido suspender a un usuario con rol Administrador.")
+        raise ValueError("No está permitido suspender a la cuenta principal.")
 
     db.usuarios.update_one(query, {"$set": {"estado": std_estado, "status": std_estado}})
     return obtener_usuario_por_id(usuario_id)
@@ -659,7 +659,7 @@ def cancelar_subasta(subasta_id: Any, current_user: Dict[str, Any]) -> Dict[str,
             "status": AuctionStatus.CANCELLED.value,
             "abierta": False,
             "cerrada_en": ahora,
-            "motivo_cancelacion": "Cancelada por el creador de la subasta" if not es_admin else "Cancelada por Administrador"
+            "motivo_cancelacion": "Cancelada por el creador de la subasta" if not es_admin else "Cancelada desde administración"
         }
     })
     return obtener_subasta_por_id(subasta_id)
@@ -698,7 +698,7 @@ def cerrar_subasta(subasta_id: Any, current_user: Dict[str, Any]) -> Dict[str, A
     return obtener_subasta_por_id(subasta_id)
 
 def registrar_oferta(subasta_id: Any, usuario_nombre: str, monto: float, usuario_id: Optional[Any] = None) -> Dict[str, Any]:
-    usuario_nombre = usuario_nombre.strip() if usuario_nombre else "Comprador"
+    usuario_nombre = usuario_nombre.strip() if usuario_nombre else "Participante"
     subasta = obtener_subasta_por_id(subasta_id)
     if not subasta:
         raise ValueError("La subasta especificada no existe.")
@@ -795,7 +795,7 @@ def moderar_subasta_admin(subasta_id: Any, nuevo_estado: str, motivo: Optional[s
             "$set": {
                 "status": status_final,
                 "abierta": True,
-                "motivo_moderacion": motivo or "Aprobada por Administrador"
+                "motivo_moderacion": motivo or "Aprobada desde administración"
             }
         })
     elif accion_upper in ["SUSPENDER", "SUSPEND", "SUSPENDED", "CANCELLED", "CANCELAR"]:
@@ -805,7 +805,7 @@ def moderar_subasta_admin(subasta_id: Any, nuevo_estado: str, motivo: Optional[s
                 "status": status_final,
                 "abierta": False,
                 "cerrada_en": ahora,
-                "motivo_moderacion": motivo or "Suspendida por Administrador"
+                "motivo_moderacion": motivo or "Suspendida desde administración"
             }
         })
     elif accion_upper in ["FINALIZAR", "FORZARCIERRE", "FORZAR_CIERRE", "CERRAR", "FINISHED", "FINALIZADA"]:
@@ -820,7 +820,7 @@ def moderar_subasta_admin(subasta_id: Any, nuevo_estado: str, motivo: Optional[s
                 "ganador_id": (mayor.get("bidderId") if mayor else None),
                 "ganador_nombre": (mayor.get("bidderName") if mayor else None),
                 "monto_final": subasta["currentPrice"],
-                "motivo_moderacion": motivo or "Cerrada por Administrador"
+                "motivo_moderacion": motivo or "Cerrada desde administración"
             }
         })
     elif accion_upper in ["ELIMINAR", "DELETE"]:
@@ -887,22 +887,30 @@ def init_db():
     # 2. Configuración global
     obtener_configuracion_global()
 
-    # 3. Semilla de datos si la base de datos está vacía
-    if db.usuarios.count_documents({}) == 0 or db.subastas.count_documents({}) == 0:
-        seed_database()
+    # 3. Semilla automática y silenciosa: puebla únicamente las colecciones vacías
+    if db.usuarios.count_documents({}) == 0:
+        seed_usuarios()
+    if db.subastas.count_documents({}) == 0:
+        seed_subastas()
 
 
 def seed_database():
-    """Genera datos simulados completos para Suba (Admin, Usuarios y 8 Subastas)."""
+    """Regenera por completo los datos de prueba (seed manual forzado)."""
+    seed_usuarios()
+    seed_subastas()
+
+
+def seed_usuarios():
+    """Inserta los usuarios de prueba si la colección está vacía (semilla silenciosa)."""
     from backend.auth import hash_password
     db = get_db()
 
-    # Usuarios simulados requeridos: 1 Admin (admin@subastas.com) + 3 Usuarios
+    # Usuarios de prueba requeridos: 1 Admin + 2 Vendedores + 2 Compradores (5 usuarios)
     usuarios_mock = [
         {
             "id": 1,
-            "name": "Administrador General",
-            "nombre": "Administrador General",
+            "name": "Andrés",
+            "nombre": "Andrés",
             "email": "admin@subastas.com",
             "password_hash": hash_password("admin123"),
             "rol": RolUsuario.ROLE_ADMIN.value,
@@ -914,8 +922,8 @@ def seed_database():
         },
         {
             "id": 2,
-            "name": "Carlos Vendedor",
-            "nombre": "Carlos Vendedor",
+            "name": "Carlos",
+            "nombre": "Carlos",
             "email": "carlos@subastas.com",
             "password_hash": hash_password("carlos123"),
             "rol": RolUsuario.ROLE_SELLER.value,
@@ -927,8 +935,8 @@ def seed_database():
         },
         {
             "id": 3,
-            "name": "Ana Compradora",
-            "nombre": "Ana Compradora",
+            "name": "Ana",
+            "nombre": "Ana",
             "email": "ana@subastas.com",
             "password_hash": hash_password("ana123"),
             "rol": RolUsuario.ROLE_BUYER.value,
@@ -940,8 +948,8 @@ def seed_database():
         },
         {
             "id": 4,
-            "name": "Mateo Coleccionista",
-            "nombre": "Mateo Coleccionista",
+            "name": "Mateo",
+            "nombre": "Mateo",
             "email": "mateo@subastas.com",
             "password_hash": hash_password("mateo123"),
             "rol": RolUsuario.ROLE_BUYER.value,
@@ -950,15 +958,33 @@ def seed_database():
             "status": "Active",
             "favoritos": [2, 6],
             "creado_en": datetime.now().isoformat()
+        },
+        {
+            "id": 5,
+            "name": "Lucía",
+            "nombre": "Lucía",
+            "email": "lucia@subastas.com",
+            "password_hash": hash_password("lucia123"),
+            "rol": RolUsuario.ROLE_SELLER.value,
+            "role": RolUsuario.ROLE_SELLER.value,
+            "estado": "Activo",
+            "status": "Active",
+            "favoritos": [1, 5],
+            "creado_en": datetime.now().isoformat()
         }
     ]
 
     db.usuarios.delete_many({})
     for u in usuarios_mock:
         db.usuarios.update_one({"email": u["email"]}, {"$set": u}, upsert=True)
-    db.counters.update_one({"_id": "usuario_id"}, {"$set": {"seq": 4}}, upsert=True)
+    db.counters.update_one({"_id": "usuario_id"}, {"$set": {"seq": 5}}, upsert=True)
 
-    # 8 Subastas simuladas con tags, fechas y diferentes estados
+
+def seed_subastas():
+    """Inserta las subastas de prueba si la colección está vacía (semilla silenciosa)."""
+    db = get_db()
+
+    # 8 Subastas de prueba con tags, fechas y diferentes estados
     ahora = datetime.now()
     subastas_mock = [
         {
@@ -971,14 +997,14 @@ def seed_database():
             "tags": ["libros", "coleccion", "antiguedades", "literatura"],
             "sellerId": 2,
             "userId": 2,
-            "sellerName": "Carlos Vendedor",
+            "sellerName": "Carlos",
             "status": AuctionStatus.ACTIVE.value,
             "imageUrl": "/static/img/laptop.jpg",
             "category": "Libros",
             "minIncrement": 15.00,
             "bids": [
-                {"id": 1, "bidderId": 3, "bidderName": "Ana Compradora", "amount": 250.00, "createdAt": (ahora - timedelta(days=1)).isoformat()},
-                {"id": 2, "bidderId": 4, "bidderName": "Mateo Coleccionista", "amount": 280.00, "createdAt": (ahora - timedelta(hours=4)).isoformat()}
+                {"id": 1, "bidderId": 3, "bidderName": "Ana", "amount": 250.00, "createdAt": (ahora - timedelta(days=1)).isoformat()},
+                {"id": 2, "bidderId": 4, "bidderName": "Mateo", "amount": 280.00, "createdAt": (ahora - timedelta(hours=4)).isoformat()}
             ],
             "creada_en": (ahora - timedelta(days=2)).isoformat()
         },
@@ -992,13 +1018,13 @@ def seed_database():
             "tags": ["tecnologia", "electronica", "computacion", "apple"],
             "sellerId": 2,
             "userId": 2,
-            "sellerName": "Carlos Vendedor",
+            "sellerName": "Carlos",
             "status": AuctionStatus.ACTIVE.value,
             "imageUrl": "/static/img/laptop.jpg",
             "category": "Tecnología",
             "minIncrement": 50.00,
             "bids": [
-                {"id": 1, "bidderId": 3, "bidderName": "Ana Compradora", "amount": 1900.00, "createdAt": (ahora - timedelta(hours=12)).isoformat()}
+                {"id": 1, "bidderId": 3, "bidderName": "Ana", "amount": 1900.00, "createdAt": (ahora - timedelta(hours=12)).isoformat()}
             ],
             "creada_en": (ahora - timedelta(days=1)).isoformat()
         },
@@ -1010,9 +1036,9 @@ def seed_database():
             "startDate": (ahora - timedelta(hours=8)).isoformat(),
             "endDate": (ahora + timedelta(days=4)).isoformat(),
             "tags": ["arte", "pintura", "coleccion", "decoracion"],
-            "sellerId": 4,
-            "userId": 4,
-            "sellerName": "Mateo Coleccionista",
+            "sellerId": 5,
+            "userId": 5,
+            "sellerName": "Lucía",
             "status": AuctionStatus.ACTIVE.value,
             "imageUrl": "/static/img/reloj.jpg",
             "category": "Arte",
@@ -1030,14 +1056,14 @@ def seed_database():
             "tags": ["relojes", "coleccion", "lujo", "joyeria"],
             "sellerId": 2,
             "userId": 2,
-            "sellerName": "Carlos Vendedor",
+            "sellerName": "Carlos",
             "status": AuctionStatus.ACTIVE.value,
             "imageUrl": "/static/img/reloj.jpg",
             "category": "Coleccionables",
             "minIncrement": 20.00,
             "bids": [
-                {"id": 1, "bidderId": 4, "bidderName": "Mateo Coleccionista", "amount": 650.00, "createdAt": (ahora - timedelta(days=2)).isoformat()},
-                {"id": 2, "bidderId": 3, "bidderName": "Ana Compradora", "amount": 700.00, "createdAt": (ahora - timedelta(days=1)).isoformat()}
+                {"id": 1, "bidderId": 4, "bidderName": "Mateo", "amount": 650.00, "createdAt": (ahora - timedelta(days=2)).isoformat()},
+                {"id": 2, "bidderId": 3, "bidderName": "Ana", "amount": 700.00, "createdAt": (ahora - timedelta(days=1)).isoformat()}
             ],
             "creada_en": (ahora - timedelta(days=3)).isoformat()
         },
@@ -1049,9 +1075,9 @@ def seed_database():
             "startDate": (ahora + timedelta(days=1)).isoformat(),  # Futuro -> PROGRAMMED
             "endDate": (ahora + timedelta(days=7)).isoformat(),
             "tags": ["fotografia", "coleccion", "electronica", "vintage"],
-            "sellerId": 4,
-            "userId": 4,
-            "sellerName": "Mateo Coleccionista",
+            "sellerId": 5,
+            "userId": 5,
+            "sellerName": "Lucía",
             "status": AuctionStatus.PROGRAMMED.value,
             "imageUrl": "/static/img/auriculares.jpg",
             "category": "Fotografía",
@@ -1069,7 +1095,7 @@ def seed_database():
             "tags": ["libros", "literatura", "coleccion", "antiguedades"],
             "sellerId": 2,
             "userId": 2,
-            "sellerName": "Carlos Vendedor",
+            "sellerName": "Carlos",
             "status": AuctionStatus.PROGRAMMED.value,
             "imageUrl": "/static/img/laptop.jpg",
             "category": "Libros",
@@ -1087,14 +1113,14 @@ def seed_database():
             "tags": ["videojuegos", "coleccion", "retro", "electronica"],
             "sellerId": 2,
             "userId": 2,
-            "sellerName": "Carlos Vendedor",
+            "sellerName": "Carlos",
             "status": AuctionStatus.FINISHED.value,
             "imageUrl": "/static/img/auriculares.jpg",
             "category": "Videojuegos",
             "minIncrement": 10.00,
             "bids": [
-                {"id": 1, "bidderId": 3, "bidderName": "Ana Compradora", "amount": 340.00, "createdAt": (ahora - timedelta(days=4)).isoformat()},
-                {"id": 2, "bidderId": 4, "bidderName": "Mateo Coleccionista", "amount": 390.00, "createdAt": (ahora - timedelta(days=2)).isoformat()}
+                {"id": 1, "bidderId": 3, "bidderName": "Ana", "amount": 340.00, "createdAt": (ahora - timedelta(days=4)).isoformat()},
+                {"id": 2, "bidderId": 4, "bidderName": "Mateo", "amount": 390.00, "createdAt": (ahora - timedelta(days=2)).isoformat()}
             ],
             "creada_en": (ahora - timedelta(days=7)).isoformat()
         },
@@ -1106,9 +1132,9 @@ def seed_database():
             "startDate": (ahora - timedelta(hours=10)).isoformat(),
             "endDate": (ahora + timedelta(days=6)).isoformat(),
             "tags": ["tecnologia", "drones", "fotografia", "electronica"],
-            "sellerId": 3,
-            "userId": 3,
-            "sellerName": "Ana Compradora",
+            "sellerId": 5,
+            "userId": 5,
+            "sellerName": "Lucía",
             "status": AuctionStatus.ACTIVE.value,
             "imageUrl": "/static/img/auriculares.jpg",
             "category": "Tecnología",

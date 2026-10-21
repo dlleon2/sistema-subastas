@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Suba — Sistema Inteligente de Subastas</title>
-    <meta name="description" content="Suba: Plataforma de subastas con control de acceso basado en roles (RBAC), MongoDB, fechas programadas y filtros por etiquetas.">
+    <title>Suba — Subastas en línea</title>
+    <meta name="description" content="Suba: Plataforma de subastas en línea para comprar y vender artículos únicos en tiempo real.">
     
     <!-- Google Fonts: Plus Jakarta Sans & Outfit -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,34 +14,6 @@
     <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
-    <!-- Barra Superior: Selector Rápido de Roles (Simulador RBAC) -->
-    <aside class="quick-demo-bar" id="quick-demo-bar">
-        <div class="quick-demo-title">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-            </svg>
-            <strong>Simulador de Cuentas (MongoDB Seed):</strong>
-        </div>
-        <div class="demo-chips">
-            <button type="button" class="demo-chip demo-chip-guest active" id="chip-guest" data-role="ROLE_GUEST" title="Visitante no autenticado">
-                👀 Visitante (ROLE_GUEST)
-            </button>
-            <button type="button" class="demo-chip demo-chip-seller" id="chip-seller" data-role="ROLE_SELLER" title="Vendedor: Carlos (carlos@subastas.com)">
-                💼 Carlos (Vendedor)
-            </button>
-            <button type="button" class="demo-chip demo-chip-buyer" id="chip-buyer" data-role="ROLE_BUYER" title="Comprador: Ana (ana@subastas.com)">
-                🛒 Ana (Comprador)
-            </button>
-            <button type="button" class="demo-chip demo-chip-buyer" id="chip-mateo" data-role="ROLE_BUYER" title="Comprador: Mateo (mateo@subastas.com)">
-                🛍️ Mateo (Comprador)
-            </button>
-            <button type="button" class="demo-chip demo-chip-admin" id="chip-admin" data-role="ROLE_ADMIN" title="Admin: admin@subastas.com">
-                ⚡ Admin (ROLE_ADMIN)
-            </button>
-        </div>
-    </aside>
-
     <!-- Top Navigation -->
     <header class="app-header" id="app-header">
         <div class="header-container">
@@ -56,21 +28,13 @@
                     </svg>
                 </div>
                 <div>
-                    <h1 class="brand-title">Suba<span>.</span></h1>
-                    <p class="brand-tagline">Sistema Inteligente de Subastas con Roles y MongoDB</p>
+                    <h1 class="brand-title">Suba</h1>
+                    <p class="brand-tagline">Compra y vende artículos únicos en tiempo real</p>
                 </div>
             </div>
 
             <div class="header-actions">
-                <a href="/docs" target="_blank" class="btn btn-outline" id="btn-api-docs" title="Ver Documentación Swagger API">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                        <polyline points="14 2 14 8 20 8"/>
-                    </svg>
-                    Swagger API
-                </a>
-
-                <!-- Botón Publicar (Disponible para Vendedores y Admin) -->
+                <!-- Botón Publicar (Disponible para usuarios registrados y Administrador) -->
                 <button class="btn btn-primary hidden" id="btn-open-create-modal">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5">
                         <line x1="12" y1="5" x2="12" y2="19"/>
@@ -81,7 +45,7 @@
 
                 <!-- Estado del Usuario / Autenticación -->
                 <div class="user-session-widget" id="user-session-widget">
-                    <span class="role-badge role-guest" id="user-role-badge">ROLE_GUEST</span>
+                    <span class="role-badge role-guest hidden" id="user-role-badge"></span>
                     <button class="btn btn-outline" id="btn-auth-action">Iniciar Sesión</button>
                 </div>
             </div>
@@ -104,11 +68,11 @@
         </button>
         <button class="nav-tab-btn hidden" data-tab="panel-vendedor" id="tab-panel-vendedor">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-            Panel Vendedor
+            Mis Subastas
         </button>
         <button class="nav-tab-btn hidden" data-tab="panel-admin" id="tab-panel-admin">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            Panel Administrador
+            Administración
         </button>
     </nav>
 
@@ -184,7 +148,13 @@
 
         <!-- Barra de Filtro Rápido por Etiquetas (Tags) -->
         <div class="tags-bar" id="tags-bar">
-            <span class="tags-bar-label">🏷️ Etiquetas:</span>
+            <span class="tags-bar-label">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
+                    <line x1="7" y1="7" x2="7.01" y2="7"/>
+                </svg>
+                Etiquetas:
+            </span>
             <button type="button" class="tag-filter-chip active" data-tag="">Todas</button>
             <button type="button" class="tag-filter-chip" data-tag="libros">#libros</button>
             <button type="button" class="tag-filter-chip" data-tag="tecnologia">#tecnologia</button>
@@ -199,7 +169,7 @@
         <!-- Banner de Contexto de Rol Activo -->
         <div id="role-context-banner" class="banner-info" style="margin-bottom: 1.5rem; padding: 0.85rem 1.25rem; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 12px; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center;">
             <div id="role-context-text">
-                <strong>Rol actual: Visitante (ROLE_GUEST)</strong> — Puedes ver el catálogo y el detalle. Inicia sesión como Comprador para pujar y marcar favoritos.
+                <strong>Bienvenido a Suba</strong> — Explora el catálogo. Inicia sesión para pujar, guardar favoritos o publicar tus artículos.
             </div>
         </div>
 
@@ -229,12 +199,7 @@
     <!-- Footer -->
     <footer class="app-footer">
         <div class="footer-container">
-            <p>&copy; 2026 SubastaHub. Sistema de Subastas Fullstack con RBAC.</p>
-            <div class="footer-links">
-                <a href="/docs" target="_blank">Swagger API</a>
-                <span class="dot-separator">&bull;</span>
-                <a href="#quick-demo-bar">Roles & Permisos</a>
-            </div>
+            <p>&copy; 2026 Suba. Plataforma de subastas en línea.</p>
         </div>
     </footer>
 
@@ -242,12 +207,12 @@
          MODALES
          ===================================================================== -->
 
-    <!-- Modal: Autenticación (Login / Registro / Cuentas Demo) -->
+    <!-- Modal: Autenticación (Login / Registro) -->
     <div class="modal-backdrop hidden" id="modal-auth">
         <div class="modal-card">
             <div class="modal-header">
                 <div>
-                    <span class="modal-pretitle">Autenticación RBAC</span>
+                    <span class="modal-pretitle">Acceso de usuarios</span>
                     <h3 class="modal-title" id="auth-modal-title">Iniciar Sesión</h3>
                 </div>
                 <button class="btn-close" id="btn-close-auth-modal">&times;</button>
@@ -289,10 +254,10 @@
                         <input type="password" id="reg-password" placeholder="••••••••" required>
                     </div>
                     <div class="form-group">
-                        <label for="reg-role">Rol Deseado *</label>
+                        <label for="reg-role">Tipo de cuenta *</label>
                         <select id="reg-role">
-                            <option value="ROLE_BUYER">Comprador (Pujar y favoritos)</option>
-                            <option value="ROLE_SELLER">Vendedor (Publicar lotes y panel)</option>
+                            <option value="ROLE_BUYER">Participar en subastas</option>
+                            <option value="ROLE_SELLER">Publicar artículos</option>
                         </select>
                     </div>
                     <div class="modal-actions">
@@ -300,14 +265,16 @@
                     </div>
                 </form>
 
-                <!-- Cuentas Demo de Prueba Rápida -->
-                <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-subtle);">
-                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">O ingresa con 1-click con una cuenta demo:</p>
-                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                        <button type="button" class="btn btn-outline" style="font-size: 0.78rem; padding: 0.35rem 0.65rem;" onclick="quickLoginDemo('admin@subastas.com', 'admin123')">🔑 Admin</button>
-                        <button type="button" class="btn btn-outline" style="font-size: 0.78rem; padding: 0.35rem 0.65rem;" onclick="quickLoginDemo('carlos@subastas.com', 'carlos123')">💼 Vendedor</button>
-                        <button type="button" class="btn btn-outline" style="font-size: 0.78rem; padding: 0.35rem 0.65rem;" onclick="quickLoginDemo('ana@subastas.com', 'ana123')">🛒 Comprador</button>
-                    </div>
+                <!-- Cuentas de demostración para probar la plataforma -->
+                <div class="auth-hint">
+                    <p class="auth-hint-title">Acceso de demostración</p>
+                    <ul class="auth-hint-list">
+                        <li>admin@subastas.com / admin123</li>
+                        <li>carlos@subastas.com / carlos123</li>
+                        <li>lucia@subastas.com / lucia123</li>
+                        <li>ana@subastas.com / ana123</li>
+                        <li>mateo@subastas.com / mateo123</li>
+                    </ul>
                 </div>
             </div>
         </div>
@@ -402,7 +369,7 @@
                     </div>
                     <div class="h-stat">
                         <span class="h-stat-label">Ganador / Líder</span>
-                        <span class="h-stat-value text-amber" id="history-leader">N/A</span>
+                        <span class="h-stat-value text-amber" id="history-leader">Sin postores</span>
                     </div>
                 </div>
 
@@ -431,7 +398,7 @@
         <div class="modal-card">
             <div class="modal-header">
                 <div>
-                    <span class="modal-pretitle">Vendedor</span>
+                    <span class="modal-pretitle">Nueva publicación</span>
                     <h3 class="modal-title">Publicar Nueva Subasta</h3>
                 </div>
                 <button class="btn-close" id="btn-close-create-modal">&times;</button>

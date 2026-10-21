@@ -36,53 +36,56 @@ sistema-subastas/
 
 ## Características Principales
 
-* **Control de Acceso Basado en Roles (RBAC):** Sistema integral de 4 roles (`ROLE_ADMIN`, `ROLE_SELLER`, `ROLE_BUYER`, `ROLE_GUEST`) con middlewares de autorización y jerarquía de permisos.
+* **Control de acceso basado en roles:** Sistema integral de 4 roles (Administrador, Vendedor, Comprador y Visitante) con middlewares de autorización y jerarquía de permisos.
 * **Aislamiento de Propiedad (Ownership):** Un usuario regular solo puede editar, cerrar o cancelar sus propias subastas (`auction.userId === currentUser.id`); intentar modificar una ajena retorna **403 Forbidden**.
 * **Búsqueda Avanzada:** Filtro por **etiquetas (tags)** y búsqueda por palabra clave en título, descripción y etiquetas.
 * **Backend Asíncrono:** Construido con FastAPI, tokens JWT / HMAC-SHA256 y documentación OpenAPI automática (/docs).
 * **Persistencia NoSQL:** Base de datos MongoDB (colecciones `roles`, `usuarios`, `subastas`, `configuracion` y `counters`), con script SQL de respaldo en `backend/migrations/001_roles_y_permisos.sql`.
 * **Pujas Inteligentes:** Validación de incremento mínimo garantizado (`precio_actual + incremento_minimo`).
-* **Panel de Vendedor:** Dashboard para gestionar lotes, con permiso de edición y cancelación solo si el lote no tiene pujas activas.
+* **Panel de Vendedor:** Panel para gestionar lotes, con permiso de edición y cancelación solo si el lote no tiene pujas activas.
 * **Panel de Administración:** Control total sobre `/api/admin/*`, moderación de subastas, suspensión de usuarios y parámetros globales del sistema.
-* **Frontend Interactivo:** Simulador de roles 1-Click integrado para probar de forma inmediata los 4 perfiles sin necesidad de logins manuales.
+* **Interfaz en español:** Experiencia de usuario totalmente en español, con cambio de sesión desde el módulo de autenticación estándar (inicio de sesión y registro) y sin elementos de demostración incrustados.
+* **Semilla automática:** La base de datos se puebla sola, en segundo plano, al arrancar el servidor si está vacía (usuarios y subastas de prueba operativas).
 
 ---
 
 ## Matriz de Roles y Permisos (RBAC)
 
-| Funcionalidad | Visitante (`ROLE_GUEST`) | Comprador (`ROLE_BUYER`) | Vendedor (`ROLE_SELLER`) | Administrador (`ROLE_ADMIN`) |
+| Funcionalidad | Visitante | Comprador | Vendedor | Administrador |
 | :--- | :---: | :---: | :---: | :---: |
-| Ver Catálogo y Detalle de Subasta | ✅ | ✅ | ✅ | ✅ |
-| Iniciar Sesión / Registrarse | ✅ | ✅ | ✅ | ✅ |
-| Realizar Pujas Manuales (con inc. mín.) | ❌ | ✅ | ✅ | ✅ |
-| Guardar / Quitar Favoritos | ❌ | ✅ | ✅ | ✅ |
-| Ver Historial Personal de Pujas | ❌ | ✅ | ✅ | ✅ |
-| Publicar Nuevas Subastas | ❌ | ❌ | ✅ | ✅ |
-| Dashboard de Mis Subastas | ❌ | ❌ | ✅ | ✅ |
-| Editar Subasta (Solo sin pujas) | ❌ | ❌ | ✅ | ✅ |
-| Cancelar Subasta (Antes de 1er incremento) | ❌ | ❌ | ✅ | ✅ |
-| Moderar Subastas (Aprobar, Rechazar, Cerrar) | ❌ | ❌ | ❌ | ✅ |
-| Suspender / Reactivar Usuarios | ❌ | ❌ | ❌ | ✅ |
-| Definir Parámetros Globales (comisión, inc.) | ❌ | ❌ | ❌ | ✅ |
+| Ver catálogo y detalle de subasta | Sí | Sí | Sí | Sí |
+| Iniciar sesión / registrarse | Sí | Sí | Sí | Sí |
+| Realizar pujas manuales (con incremento mínimo) | No | Sí | Sí | Sí |
+| Guardar / quitar favoritos | No | Sí | Sí | Sí |
+| Ver historial personal de pujas | No | Sí | Sí | Sí |
+| Publicar nuevas subastas | No | Sí | Sí | Sí |
+| Panel de mis subastas | No | Sí | Sí | Sí |
+| Editar subasta (solo sin pujas) | No | Sí | Sí | Sí |
+| Cancelar subasta (antes del primer incremento) | No | Sí | Sí | Sí |
+| Moderar subastas (aprobar, suspender, cerrar, eliminar) | No | No | No | Sí |
+| Suspender / reactivar usuarios | No | No | No | Sí |
+| Definir parámetros globales (comisión, incremento) | No | No | No | Sí |
 
 ---
 
-## Cuentas de Prueba Preconfiguradas (1-Click en el Simulador)
+## Cuentas de Prueba Preconfiguradas
+
+La base de datos se puebla automáticamente con estas cuentas al iniciar la aplicación si está vacía. El inicio de sesión se realiza desde el módulo de autenticación estándar (botón **Iniciar Sesión**).
 
 | Rol | Correo Electrónico | Contraseña | Capacidades Clave |
 | :--- | :--- | :--- | :--- |
-| **ROLE_ADMIN** | `admin@subastas.com` | `admin123` | Control total, `/admin/dashboard`, moderación (Aprobar/Suspender/Eliminar) |
-| **ROLE_SELLER** | `carlos@subastas.com` | `carlos123` | Publicar subastas con etiquetas/fechas y panel de gestión |
-| **ROLE_BUYER** | `ana@subastas.com` | `ana123` | Pujar con incremento mínimo, favoritos y publicar sus propias subastas |
-| **ROLE_BUYER** | `mateo@subastas.com` | `mateo123` | Pujar con incremento mínimo, favoritos y publicar sus propias subastas |
-| **ROLE_GUEST** | *(No autenticado)* | *(Sin clave)* | Solo lectura y autenticación |
+| **Administrador** | `admin@subastas.com` | `admin123` | Control total, panel administrativo y moderación (aprobar/suspender/eliminar) |
+| **Vendedor** | `carlos@subastas.com` | `carlos123` | Publicar y gestionar lotes con etiquetas y fechas |
+| **Vendedor** | `lucia@subastas.com` | `lucia123` | Publicar y gestionar lotes con etiquetas y fechas |
+| **Comprador** | `ana@subastas.com` | `ana123` | Pujar con incremento mínimo, favoritos y publicar subastas propias |
+| **Comprador** | `mateo@subastas.com` | `mateo123` | Pujar con incremento mínimo, favoritos y publicar subastas propias |
 
 ---
 
 ## Datos Simulados (Seed)
 
-La base de datos MongoDB se puebla automáticamente al iniciar la aplicación si está vacía
-(1 administrador, 3 usuarios y 8 subastas con etiquetas y fechas variadas).
+La base de datos MongoDB se puebla automáticamente, en segundo plano, al iniciar la aplicación si está vacía
+(1 administrador, 2 vendedores, 2 compradores y 8 subastas con etiquetas y fechas variadas, incluyendo subastas activas para probar las pujas).
 
 Para forzar una regeneración limpia de los datos de prueba:
 
@@ -133,7 +136,7 @@ python main.py
 ```
 
 * **Interfaz Web:** Abre tu navegador en [http://127.0.0.1:8000](http://127.0.0.1:8000)
-* **Documentación API (Swagger):** Disponible en [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+* **Documentación API:** Disponible en [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
 Para ejecutar el modo clásico por terminal:
 ```bash

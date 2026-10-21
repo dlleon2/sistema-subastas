@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 """
-Script de Inicialización y Carga de Datos Simulados (Seed) para Suba.
+Script de Inicialización y Carga de Datos de Prueba (Seed) para Suba.
 Puebla MongoDB con:
 - 1 Usuario Administrador (admin@subastas.com / admin123)
-- 3 Usuarios Vendedores/Compradores (carlos@subastas.com, ana@subastas.com, mateo@subastas.com)
+- 2 Usuarios Vendedores (carlos@subastas.com / carlos123, lucia@subastas.com / lucia123)
+- 2 Usuarios Compradores (ana@subastas.com / ana123, mateo@subastas.com / mateo123)
 - 8 Subastas de prueba con tags (libros, arte, electronica, tecnologia, relojes, etc.),
   fechas pasadas/presentes/futuras y estados (ACTIVE, PROGRAMMED, FINISHED).
+
+Nota: la aplicación ejecuta esta semilla de forma automática y silenciosa al arrancar
+si la base de datos está vacía. Este script permite forzar una regeneración limpia.
 """
 import sys
 import os
@@ -18,7 +22,7 @@ from backend.database import get_db, seed_database, init_db, obtener_subastas, l
 
 def run_seed():
     print("=" * 65)
-    print("INICIANDO SEMILLA DE DATOS MOCKS EN MONGODB (SUBA)")
+    print("INICIANDO CARGA DE DATOS DE PRUEBA EN MONGODB (SUBA)")
     print("=" * 65)
 
     db = get_db()
@@ -33,11 +37,11 @@ def run_seed():
     usuarios = listar_usuarios()
     subastas = obtener_subastas(filtro_estado=None, solo_aprobadas=False)
 
-    print("\n[OK] USUARIOS SIMULADOS CREADOS:")
+    print("\n[OK] USUARIOS DE PRUEBA CREADOS:")
     for u in usuarios:
         print(f"  • #{u['id']} - {u['nombre']} ({u['email']}) -> Rol: {u['rol']}")
 
-    print("\n[OK] SUBASTAS SIMULADAS CREADAS:")
+    print("\n[OK] SUBASTAS DE PRUEBA CREADAS:")
     for s in subastas:
         tags_str = ", ".join(f"#{t}" for t in s['tags'])
         print(f"  • #{s['id']} [{s['status']}] {s['title']} | Precio: ${s['currentPrice']:.2f} | Tags: [{tags_str}]")
